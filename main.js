@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 /* =========================================================
    Crystal Forge 3D — мобильный 3D block puzzle без backend
    ========================================================= */
 
 // -------------------- Основные настройки игры --------------------
-const GRID_SIZE = 8; // Здесь можно заменить на 10, чтобы получить поле 10×10.
+const GRID_SIZE = 8;
 const CELL_SIZE = 1;
 const CELL_GAP = 0.075;
 const CELL_STEP = CELL_SIZE + CELL_GAP;
@@ -86,7 +89,7 @@ const finalScoreText = document.getElementById('finalScoreText');
 const finalBestText = document.getElementById('finalBestText');
 
 // -------------------- Three.js объекты --------------------
-let scene, camera, renderer, raycaster, pointerNdc;
+let scene, camera, renderer, composer, raycaster, pointerNdc;
 let boardGroup, tileGroup, blockGroup, ghostGroup, particleGroup;
 let boardHitPlane;
 let ambientLight, hemiLight, keyLight, pointLight;
@@ -96,7 +99,6 @@ let boardPositions = [];
 let clock = new THREE.Clock();
 const animations = [];
 const particles = [];
-// Камера почти сверху: поле читается как настоящая мобильная puzzle-доска.
 const baseCameraOffset = new THREE.Vector3(0, 9.25, 2.25);
 const cameraTarget = new THREE.Vector3(0, 0, -0.08);
 const desiredCameraPosition = new THREE.Vector3();
@@ -125,8 +127,6 @@ const state = {
 };
 
 // -------------------- Список фигур --------------------
-// Чтобы добавить фигуру: добавь объект { name, weight, cells:[[row,col], ...] }.
-// Координаты автоматически нормализуются, вращение не требуется.
 const PIECE_LIBRARY = [
   { name: 'Single', weight: 16, cells: [[0, 0]] },
   { name: 'Duo H', weight: 13, cells: [[0, 0], [0, 1]] },
@@ -178,7 +178,7 @@ resetGame(false);
 wireUI();
 animate();
 
-// -------------------- Three.js: сцена, камера, renderer --------------------
+// -------------------- Three.js: сцена, камера, renderer, постобработка --------------------
 function initThree() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(THEMES[state.themeName].scene);
@@ -195,6 +195,17 @@ function initThree() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   sceneWrap.appendChild(renderer.domElement);
+
+  // --- Постобработка (Bloom) ---
+  const renderScene = new RenderPass(scene, camera);
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+  bloomPass.threshold = 0.25;
+  bloomPass.strength = 0.95; // Интенсивность свечения
+  bloomPass.radius = 0.6;
+  
+  composer = new EffectComposer(renderer);
+  composer.addPass(renderScene);
+  composer.addPass(bloomPass);
 
   raycaster = new THREE.Raycaster();
   pointerNdc = new THREE.Vector2();
@@ -228,7 +239,6 @@ function initThree() {
   resize();
   window.addEventListener('resize', resize, { passive: true });
 
-  // Предотвращает прокрутку страницы на телефоне во время игры.
   document.addEventListener('touchmove', (event) => event.preventDefault(), { passive: false });
 }
 
@@ -262,7 +272,7 @@ function createBoard() {
   ghostGoodMaterial = new THREE.MeshStandardMaterial({
     color: theme.good,
     emissive: theme.good,
-    emissiveIntensity: 0.65,
+    emissiveIntensity: 1.5, // Усилено для Bloom
     transparent: true,
     opacity: 0.58,
     roughness: 0.35
@@ -271,7 +281,7 @@ function createBoard() {
   ghostBadMaterial = new THREE.MeshStandardMaterial({
     color: theme.bad,
     emissive: theme.bad,
-    emissiveIntensity: 0.58,
+    emissiveIntensity: 1.5, // Усилено для Bloom
     transparent: true,
     opacity: 0.58,
     roughness: 0.35
@@ -285,7 +295,6 @@ function createBoard() {
   boardBase.castShadow = true;
   boardGroup.add(boardBase);
 
-  // Невысокая 3D-рама делает поле заметно объёмным даже при виде почти сверху.
   const rimMaterial = new THREE.MeshStandardMaterial({
     color: theme.board,
     metalness: 0.38,
@@ -316,7 +325,7 @@ function createBoard() {
     metalness: 0.25,
     roughness: 0.34,
     emissive: theme.accent,
-    emissiveIntensity: 0.16,
+    emissiveIntensity: 0.4, // Усилено для Bloom
     transparent: true,
     opacity: 0.22
   });
@@ -375,14 +384,13 @@ function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
   renderer.setSize(width, height);
+  composer.setSize(width, height); // Важно обновлять composer
 
   const aspect = width / height;
   const boardWorldSpan = (GRID_SIZE - 1) * CELL_STEP + CELL_SIZE + 1.25;
   let viewWidth;
   let viewHeight;
 
-  // В портретной ориентации ширина экрана ограничивает поле сильнее всего.
-  // Поэтому считаем ортографическую камеру от ширины, чтобы игрок всегда видел все 8×8 клеток.
   if (aspect < 1) {
     viewWidth = boardWorldSpan * 1.015;
     viewHeight = viewWidth / aspect;
@@ -397,7 +405,6 @@ function resize() {
   camera.bottom = -viewHeight / 2;
   camera.updateProjectionMatrix();
 }
-
 
 // -------------------- UI и события --------------------
 function wireUI() {
@@ -434,10 +441,6 @@ function wireUI() {
     saveSettings();
     renderPieces(-1);
   });
-
-  // Поле зафиксировано: игрок всегда видит всю доску, случайные сдвиги исключены.
-  // renderer.domElement.addEventListener('pointerdown', onBoardPointerDown, { passive: false });
-  // renderer.domElement.addEventListener('dblclick', resetBoardPan, { passive: true });
 
   window.addEventListener('pointermove', onPointerMove, { passive: false });
   window.addEventListener('pointerup', onPointerUp, { passive: false });
@@ -518,9 +521,36 @@ function renderPieces(replacedIndex = null) {
     const mini = createPieceMini(piece, theme.blocks[piece.colorIndex % theme.blocks.length], 'piece-mini');
     card.appendChild(mini);
 
+    // Добавляем кнопку вращения
+    if (!piece.placed && piece.cells.length > 1) {
+      const rotBtn = document.createElement('div');
+      rotBtn.className = 'rotate-btn';
+      rotBtn.innerHTML = '↻';
+      rotBtn.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        rotatePiece(index);
+      });
+      card.appendChild(rotBtn);
+    }
+
     card.addEventListener('pointerdown', (event) => onPiecePointerDown(event, index), { passive: false });
     piecesTray.appendChild(card);
   });
+}
+
+function rotatePiece(index) {
+  if (state.locked || state.paused || state.gameOver) return;
+  playSound('select');
+  vibrate(15);
+  const piece = state.pieces[index];
+  // Поворот на 90 градусов по часовой: (r, c) -> (c, -r)
+  piece.cells = normalizeCells(piece.cells.map(([r, c]) => [c, -r]));
+  renderPieces(index);
+  
+  // Проверяем Game Over после поворота (возможно фигура теперь никуда не встанет)
+  if (!anyMoveAvailable()) {
+    setTimeout(() => showGameOver(), 400);
+  }
 }
 
 function createPieceMini(piece, color, className = 'piece-mini') {
@@ -531,8 +561,6 @@ function createPieceMini(piece, color, className = 'piece-mini') {
   mini.style.setProperty('--rows', String(bounds.rows));
   mini.style.setProperty('--piece-color', color);
 
-  // Нижние фигуры теперь рисуются строго сверху и в той же ориентации,
-  // в которой они лягут на поле. Размер автоматически ужимается для длинных линий.
   const maxCells = Math.max(bounds.cols, bounds.rows);
   const isDrag = className.includes('drag');
   const available = isDrag ? 142 : (window.innerWidth <= 370 ? 74 : 88);
@@ -632,21 +660,6 @@ function cancelDrag() {
   boardPanGesture = null;
 }
 
-function onBoardPointerDown(event) {
-  if (state.activeDrag || event.button > 0) return;
-  if (!state.gameStarted || state.gameOver || state.paused || state.locked) return;
-  event.preventDefault();
-
-  boardPanGesture = {
-    pointerId: event.pointerId,
-    startX: event.clientX,
-    startY: event.clientY,
-    targetX: cameraTarget.x,
-    targetZ: cameraTarget.z
-  };
-  renderer.domElement.setPointerCapture?.(event.pointerId);
-}
-
 function updateBoardPan(clientX, clientY) {
   if (!boardPanGesture) return;
   const rect = renderer.domElement.getBoundingClientRect();
@@ -665,14 +678,11 @@ function endBoardPan() {
   boardPanGesture = null;
 }
 
-function resetBoardPan() {
-  cameraTarget.set(0, 0, -0.15);
-}
-
 function updateDragGhostPosition(clientX, clientY) {
-  // Смещаем фигуру выше пальца, чтобы палец не закрывал блоки.
+  // Умное динамическое смещение для мобилок в зависимости от высоты экрана
+  const vhOffset = window.innerHeight * 0.12; 
   dragGhostUi.style.left = `${clientX}px`;
-  dragGhostUi.style.top = `${clientY - 86}px`;
+  dragGhostUi.style.top = `${clientY - vhOffset}px`;
 }
 
 function updateBoardHover(clientX, clientY) {
@@ -706,7 +716,6 @@ function pointerToBoardCell(clientX, clientY, piece) {
   const col = Math.round(rawCol - (bounds.cols - 1) / 2);
   const row = Math.round(rawRow - (bounds.rows - 1) / 2);
 
-  // Даём возможность видеть красную подсветку частично за краями поля.
   if (row < -bounds.rows || col < -bounds.cols || row > GRID_SIZE || col > GRID_SIZE) return null;
   return { row, col };
 }
@@ -808,7 +817,6 @@ async function placePiece(piece, pieceIndex, startRow, startCol) {
     state.multiplier = 1;
   }
 
-  // В этой версии слот обновляется сразу: поставил фигуру — на её месте появляется следующая.
   state.pieces[pieceIndex] = generateReplacementPiece();
 
   updateScoreUI();
@@ -822,19 +830,25 @@ async function placePiece(piece, pieceIndex, startRow, startCol) {
 }
 
 function createBlockMesh(color, colorIndex = 0) {
+  const isIce = state.themeName === 'ice';
+  const isNeon = state.themeName === 'neon' || state.themeName === 'space';
+  
   const material = new THREE.MeshPhysicalMaterial({
     color,
     emissive: color,
-    emissiveIntensity: 0.16,
-    metalness: 0.06,
-    roughness: 0.22,
-    clearcoat: 0.9,
-    clearcoatRoughness: 0.16,
+    emissiveIntensity: isIce ? 0.05 : (isNeon ? 0.4 : 0.16),
+    metalness: isIce ? 0.1 : 0.06,
+    roughness: isIce ? 0.05 : 0.22,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1,
     transparent: true,
-    opacity: 0.96
+    opacity: isIce ? 1.0 : 0.96,
+    transmission: isIce ? 0.95 : 0.0, // Эффект стекла
+    ior: isIce ? 1.5 : 1.0,
+    thickness: isIce ? 0.8 : 0.0
   });
   const mesh = new THREE.Mesh(blockGeometry, material);
-  mesh.castShadow = true;
+  mesh.castShadow = !isIce; // Стекло не должно отбрасывать плотную тень
   mesh.receiveShadow = false;
   mesh.userData.colorIndex = colorIndex;
   return mesh;
@@ -893,7 +907,7 @@ function clearCompletedLines(lines) {
 
     animateValue(520, (t) => {
       const glow = Math.sin(t * Math.PI);
-      mesh.material.emissiveIntensity = 0.22 + glow * 1.15;
+      mesh.material.emissiveIntensity = 0.5 + glow * 2.5; // Яркая вспышка для Bloom
       mesh.position.y = baseY + glow * 0.46;
       const s = baseScale * (1 - easeInCubic(t));
       mesh.scale.setScalar(Math.max(0.01, s));
@@ -930,7 +944,7 @@ function flashCompletedLines(lines) {
     animateValue(310, (t) => {
       const p = Math.sin(t * Math.PI);
       flash.scale.setScalar(0.6 + p * 0.62);
-      flash.material.opacity = p * 0.72;
+      flash.material.opacity = p * 0.9;
     }, index * 8, () => {
       ghostGroup.remove(flash);
       flash.geometry.dispose?.();
@@ -964,7 +978,6 @@ function anyMoveAvailable() {
 }
 
 function generateReplacementPiece() {
-  // Стараемся дать игроку фигуру, которую реально можно поставить сейчас.
   for (let attempt = 0; attempt < 90; attempt++) {
     const candidate = clonePiece(weightedRandomPiece());
     if (candidate.cells.length >= 5 && Math.random() < 0.55) continue;
@@ -977,7 +990,6 @@ function generateReplacementPiece() {
     if (piece && canPieceFitAnywhere(piece)) return piece;
   }
 
-  // Если даже одиночный кубик не помещается, вернём одиночный слот и сразу после рендера сработает game over.
   return clonePiece(PIECE_LIBRARY[0]);
 }
 
@@ -1119,7 +1131,6 @@ function showCombo(lineCount) {
   toast.textContent = state.multiplier > 1 ? `${label} ×${state.multiplier}` : label;
   toast.classList.remove('hidden');
   toast.style.animation = 'none';
-  // Перезапуск CSS-анимации.
   void toast.offsetHeight;
   toast.style.animation = '';
   setTimeout(() => toast.classList.add('hidden'), 950);
@@ -1160,14 +1171,23 @@ function applyTheme(themeName) {
     if (child.name === 'ambient-dust') child.material.color.set(theme.accent);
   });
 
-  // Перекрашиваем уже поставленные кубики под новую тему.
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const cell = state.grid[row]?.[col];
       if (!cell?.mesh) continue;
+      
       const color = theme.blocks[cell.colorIndex % theme.blocks.length];
+      const isIce = themeName === 'ice';
+      const isNeon = themeName === 'neon' || themeName === 'space';
+      
       cell.mesh.material.color.set(color);
       cell.mesh.material.emissive.set(color);
+      cell.mesh.material.emissiveIntensity = isIce ? 0.05 : (isNeon ? 0.4 : 0.16);
+      cell.mesh.material.transmission = isIce ? 0.95 : 0.0;
+      cell.mesh.material.ior = isIce ? 1.5 : 1.0;
+      cell.mesh.material.thickness = isIce ? 0.8 : 0.0;
+      cell.mesh.material.opacity = isIce ? 1.0 : 0.96;
+      cell.mesh.castShadow = !isIce;
     }
   }
 }
@@ -1176,6 +1196,7 @@ function applyQuality(quality) {
   const ratioByQuality = { low: 1, medium: 1.5, high: MAX_PIXEL_RATIO };
   const ratio = Math.min(window.devicePixelRatio, ratioByQuality[quality] || 1.5);
   renderer?.setPixelRatio(ratio);
+  composer?.setPixelRatio(ratio);
   if (!renderer) return;
 
   const high = quality === 'high';
@@ -1257,8 +1278,18 @@ function playSoftNoise(startTime, amount, length, destination) {
 }
 
 function vibrate(pattern) {
-  if (!state.vibration || !navigator.vibrate) return;
-  navigator.vibrate(pattern);
+  if (!state.vibration) return;
+  // Интеграция тактильной отдачи для Telegram Web App (решает проблему iOS)
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+    if (Array.isArray(pattern)) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+    } else {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+    }
+    return;
+  }
+  // Fallback для обычного браузера Android
+  if (navigator.vibrate) navigator.vibrate(pattern);
 }
 
 // -------------------- Частицы, анимации, render loop --------------------
@@ -1271,10 +1302,10 @@ function animate() {
   updateParticles(delta);
   updateCameraShake(delta);
 
-  // Поле не вращается само: top-down ориентация фигур всегда совпадает с превью в нижней панели.
   pointLight.intensity = 1.85 + Math.sin(elapsed * 1.15) * 0.18;
 
-  renderer.render(scene, camera);
+  // Используем composer вместо базового renderer для Bloom эффекта
+  composer.render();
 }
 
 function animateValue(duration, update, delay = 0, complete) {
@@ -1303,11 +1334,13 @@ function updateAnimations(now) {
 function spawnParticles(origin, color) {
   if (state.quality === 'low') return;
   const amount = state.quality === 'high' ? 10 : 6;
+  const isNeon = state.themeName === 'neon' || state.themeName === 'space';
+  
   for (let i = 0; i < amount; i++) {
     const material = new THREE.MeshStandardMaterial({
       color,
       emissive: color,
-      emissiveIntensity: 0.7,
+      emissiveIntensity: isNeon ? 2.0 : 0.7, // Ярче для Bloom
       roughness: 0.4,
       transparent: true,
       opacity: 0.9
@@ -1373,7 +1406,6 @@ function updateCameraShake(delta) {
   }
   camera.lookAt(cameraTarget);
 }
-
 
 // -------------------- Вспомогательные функции --------------------
 function createEmptyGrid() {
