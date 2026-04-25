@@ -304,6 +304,30 @@ button {
   animation: pieceCardPop 430ms cubic-bezier(.2, .95, .18, 1.12) both;
 }
 
+.rotate-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text);
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.rotate-btn:active {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.9);
+}
+
 .piece-mini,
 .drag-piece-mini {
   display: grid;
