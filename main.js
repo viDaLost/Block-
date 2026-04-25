@@ -79,6 +79,112 @@ const THEMES = {
   }
 };
 
+const THEME_VISUALS = {
+  default: {
+    bloomStrength: 0.24,
+    bloomThreshold: 0.62,
+    bloomRadius: 0.42,
+    boardGlow: 0.028,
+    tileGlow: 0.018,
+    rimGlow: 0.042,
+    blockEmissive: 0.06,
+    capEmissive: 0.028,
+    particleEmissive: 0.46,
+    shadowOpacity: 0.17,
+    accentLight: 0.72,
+    accentLightPulse: 0.05,
+    leftRim: 0.34,
+    rightRim: 0.23,
+    blockMetalness: 0.12,
+    blockRoughness: 0.16,
+    capMetalness: 0.16,
+    capRoughness: 0.08,
+    transmission: 0.0,
+    ior: 1.0,
+    thickness: 0.0,
+    opacity: 0.98,
+    capLighten: 0.23,
+    coreLighten: 0.06,
+    coreDarken: 0.14,
+    shadowScale: 0.88
+  },
+  neon:   { bloomStrength: 0.26, accentLight: 0.80, leftRim: 0.39, rightRim: 0.28, blockEmissive: 0.074, capEmissive: 0.034 },
+  crystal:{ bloomStrength: 0.18, bloomThreshold: 0.68, boardGlow: 0.022, tileGlow: 0.014, rimGlow: 0.028, blockEmissive: 0.042, capEmissive: 0.022, accentLight: 0.56, leftRim: 0.25, rightRim: 0.16, particleEmissive: 0.24 },
+  lava:   { bloomStrength: 0.21, bloomThreshold: 0.68, accentLight: 0.60, leftRim: 0.27, rightRim: 0.18, blockMetalness: 0.08, blockRoughness: 0.20, capRoughness: 0.10 },
+  ice:    { bloomStrength: 0.16, bloomThreshold: 0.74, boardGlow: 0.018, tileGlow: 0.012, rimGlow: 0.025, blockEmissive: 0.024, capEmissive: 0.016, particleEmissive: 0.16, shadowOpacity: 0.10, accentLight: 0.50, accentLightPulse: 0.03, leftRim: 0.18, rightRim: 0.12, blockMetalness: 0.04, blockRoughness: 0.08, capMetalness: 0.06, capRoughness: 0.04, transmission: 0.52, ior: 1.24, thickness: 0.34, opacity: 1.0, capLighten: 0.30, coreDarken: 0.06 },
+  space:  { bloomStrength: 0.20, bloomThreshold: 0.70, accentLight: 0.58, leftRim: 0.22, rightRim: 0.18, blockEmissive: 0.046, capEmissive: 0.024 },
+  toxic:  { bloomStrength: 0.17, bloomThreshold: 0.78, boardGlow: 0.014, tileGlow: 0.010, rimGlow: 0.020, blockEmissive: 0.018, capEmissive: 0.014, particleEmissive: 0.16, accentLight: 0.44, leftRim: 0.18, rightRim: 0.12, capLighten: 0.18 },
+  tokyo:  { bloomStrength: 0.14, bloomThreshold: 0.80, boardGlow: 0.012, tileGlow: 0.010, rimGlow: 0.018, blockEmissive: 0.015, capEmissive: 0.012, particleEmissive: 0.15, accentLight: 0.42, leftRim: 0.17, rightRim: 0.10 },
+  royal:  { bloomStrength: 0.16, bloomThreshold: 0.76, accentLight: 0.50, leftRim: 0.22, rightRim: 0.12, blockMetalness: 0.18, blockRoughness: 0.14, capMetalness: 0.20, capRoughness: 0.07 }
+};
+
+function getThemeVisuals(themeName) {
+  return { ...THEME_VISUALS.default, ...(THEME_VISUALS[themeName] || {}) };
+}
+
+function getCurrentThemeVisuals() {
+  return getThemeVisuals(state.themeName);
+}
+
+function getBloomQualityScale() {
+  return state.quality === 'low' ? 0.74 : state.quality === 'high' ? 1.08 : 1;
+}
+
+function mixColor(colorValue, targetValue, amount) {
+  return new THREE.Color(colorValue).lerp(new THREE.Color(targetValue), amount);
+}
+
+function getBlockParts(block) {
+  if (block?.userData?.parts) return block.userData.parts;
+  return { core: block, cap: null, shadow: null };
+}
+
+function applyBlockMaterialTheme(material, color, themeName = state.themeName, part = 'core') {
+  const visuals = getThemeVisuals(themeName);
+  const base = new THREE.Color(color);
+  const tint = part === 'cap' ? mixColor(base, 0xffffff, visuals.capLighten) : mixColor(base, 0xffffff, visuals.coreLighten);
+  const emissive = part === 'cap' ? mixColor(base, 0xffffff, visuals.capLighten * 0.5) : base.clone();
+  material.color.copy(tint);
+  material.emissive.copy(emissive);
+  material.emissiveIntensity = part === 'cap' ? visuals.capEmissive : visuals.blockEmissive;
+  material.metalness = part === 'cap' ? visuals.capMetalness : visuals.blockMetalness;
+  material.roughness = part === 'cap' ? visuals.capRoughness : visuals.blockRoughness;
+  material.clearcoat = 1.0;
+  material.clearcoatRoughness = part === 'cap' ? 0.04 : 0.10;
+  material.transparent = true;
+  material.opacity = visuals.opacity;
+  material.transmission = part === 'cap' ? visuals.transmission * 0.42 : visuals.transmission;
+  material.ior = visuals.ior;
+  material.thickness = part === 'cap' ? visuals.thickness * 0.55 : visuals.thickness;
+}
+
+function updateBlockAppearance(block, color, themeName = state.themeName) {
+  const visuals = getThemeVisuals(themeName);
+  const parts = getBlockParts(block);
+  if (parts.core?.material) applyBlockMaterialTheme(parts.core.material, color, themeName, 'core');
+  if (parts.cap?.material) applyBlockMaterialTheme(parts.cap.material, color, themeName, 'cap');
+  if (parts.shadow?.material) {
+    parts.shadow.material.color.set(0x000000);
+    parts.shadow.material.opacity = visuals.shadowOpacity;
+  }
+  if (parts.core) parts.core.castShadow = visuals.transmission < 0.2;
+}
+
+function pulseBlockAppearance(block, glowAmount) {
+  const visuals = getCurrentThemeVisuals();
+  const parts = getBlockParts(block);
+  if (parts.core?.material) parts.core.material.emissiveIntensity = visuals.blockEmissive + glowAmount;
+  if (parts.cap?.material) parts.cap.material.emissiveIntensity = visuals.capEmissive + glowAmount * 0.55;
+}
+
+function disposeBlockMesh(block) {
+  block?.traverse?.((child) => {
+    child.geometry?.dispose?.();
+    if (Array.isArray(child.material)) child.material.forEach((m) => m?.dispose?.());
+    else child.material?.dispose?.();
+  });
+}
+
 // -------------------- DOM --------------------
 const sceneWrap = document.getElementById('sceneWrap');
 const piecesTray = document.getElementById('piecesTray');
@@ -113,7 +219,7 @@ const finalBestText = document.getElementById('finalBestText');
 let scene, camera, renderer, composer, raycaster, pointerNdc;
 let boardGroup, tileGroup, blockGroup, ghostGroup, particleGroup;
 let boardHitPlane;
-let ambientLight, hemiLight, keyLight, pointLight;
+let ambientLight, hemiLight, keyLight, fillLight, pointLight, rimLightLeft, rimLightRight, bloomPass;
 let cellTileGeometry, blockGeometry, ghostBlockGeometry, particleGeometry;
 let boardBase, boardBaseMaterial, tileMaterial, ghostGoodMaterial, ghostBadMaterial;
 let boardPositions = [];
@@ -213,17 +319,20 @@ function initThree() {
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.94;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   sceneWrap.appendChild(renderer.domElement);
 
-  // --- Постобработка (Bloom) с более мягкими настройками, чтобы избежать засвета ---
+  const visuals = getCurrentThemeVisuals();
   const renderScene = new RenderPass(scene, camera);
-  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-  bloomPass.threshold = 0.45; // Повышен порог: светится только то, что действительно яркое
-  bloomPass.strength = 0.45;  // Снижена сила свечения
-  bloomPass.radius = 0.5;
-  
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), visuals.bloomStrength, visuals.bloomRadius, visuals.bloomThreshold);
+  bloomPass.threshold = visuals.bloomThreshold;
+  bloomPass.strength = visuals.bloomStrength * getBloomQualityScale();
+  bloomPass.radius = visuals.bloomRadius;
+
   composer = new EffectComposer(renderer);
   composer.addPass(renderScene);
   composer.addPass(bloomPass);
@@ -238,10 +347,10 @@ function initThree() {
   particleGroup = new THREE.Group();
   scene.add(boardGroup, tileGroup, blockGroup, ghostGroup, particleGroup);
 
-  ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
-  hemiLight = new THREE.HemisphereLight(0xaadfff, 0x100820, 1.65);
-  keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
-  keyLight.position.set(1.8, 9.5, 1.4);
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
+  hemiLight = new THREE.HemisphereLight(0xc8e2ff, 0x100820, 1.16);
+  keyLight = new THREE.DirectionalLight(0xffffff, 1.05);
+  keyLight.position.set(-2.6, 9.4, 3.8);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
   keyLight.shadow.camera.near = 0.5;
@@ -250,9 +359,20 @@ function initThree() {
   keyLight.shadow.camera.right = 10;
   keyLight.shadow.camera.top = 10;
   keyLight.shadow.camera.bottom = -10;
-  pointLight = new THREE.PointLight(THEMES[state.themeName].accent, 2.1, 14);
-  pointLight.position.set(-3.5, 4.2, -4.8);
-  scene.add(ambientLight, hemiLight, keyLight, pointLight);
+
+  fillLight = new THREE.DirectionalLight(0xb4cbff, 0.48);
+  fillLight.position.set(3.8, 5.8, -3.4);
+
+  pointLight = new THREE.PointLight(THEMES[state.themeName].accent, visuals.accentLight, 13);
+  pointLight.position.set(0.0, 4.0, 0.6);
+
+  rimLightLeft = new THREE.PointLight(THEMES[state.themeName].accent, visuals.leftRim, 16);
+  rimLightLeft.position.set(-4.0, 3.0, 2.8);
+
+  rimLightRight = new THREE.PointLight(THEMES[state.themeName].accent2, visuals.rightRim, 15);
+  rimLightRight.position.set(4.0, 2.6, -2.8);
+
+  scene.add(ambientLight, hemiLight, keyLight, fillLight, pointLight, rimLightLeft, rimLightRight);
 
   createGeometries();
   createBoard();
@@ -274,38 +394,40 @@ function createBoard() {
   const theme = THEMES[state.themeName];
   boardPositions = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
 
+  const visuals = getCurrentThemeVisuals();
+
   boardBaseMaterial = new THREE.MeshStandardMaterial({
     color: theme.board,
-    metalness: 0.35,
-    roughness: 0.55,
+    metalness: 0.26,
+    roughness: 0.60,
     emissive: theme.accent,
-    emissiveIntensity: 0.06
+    emissiveIntensity: visuals.boardGlow
   });
 
   tileMaterial = new THREE.MeshStandardMaterial({
     color: theme.tile,
-    metalness: 0.28,
-    roughness: 0.48,
+    metalness: 0.18,
+    roughness: 0.56,
     emissive: theme.tileLine,
-    emissiveIntensity: 0.065
+    emissiveIntensity: visuals.tileGlow
   });
 
   ghostGoodMaterial = new THREE.MeshStandardMaterial({
     color: theme.good,
     emissive: theme.good,
-    emissiveIntensity: 0.8,
+    emissiveIntensity: 0.34,
     transparent: true,
-    opacity: 0.58,
-    roughness: 0.35
+    opacity: 0.50,
+    roughness: 0.42
   });
 
   ghostBadMaterial = new THREE.MeshStandardMaterial({
     color: theme.bad,
     emissive: theme.bad,
-    emissiveIntensity: 0.8,
+    emissiveIntensity: 0.34,
     transparent: true,
-    opacity: 0.58,
-    roughness: 0.35
+    opacity: 0.50,
+    roughness: 0.42
   });
 
   const boardWidth = (GRID_SIZE - 1) * CELL_STEP + CELL_SIZE;
@@ -321,7 +443,7 @@ function createBoard() {
     metalness: 0.38,
     roughness: 0.42,
     emissive: theme.accent,
-    emissiveIntensity: 0.09
+    emissiveIntensity: visuals.rimGlow
   });
   const rimThickness = 0.24;
   const rimHeight = 0.72;
@@ -346,9 +468,9 @@ function createBoard() {
     metalness: 0.25,
     roughness: 0.34,
     emissive: theme.accent,
-    emissiveIntensity: 0.15,
+    emissiveIntensity: visuals.rimGlow * 1.25,
     transparent: true,
-    opacity: 0.22
+    opacity: 0.12
   });
   const innerGlow = new THREE.Mesh(new RoundedBoxGeometry(boardWidth + 0.34, 0.055, boardWidth + 0.34, 5, 0.16), bevelGlowMaterial);
   innerGlow.position.y = 0.005;
@@ -823,27 +945,31 @@ async function placePiece(piece, pieceIndex, startRow, startCol) {
 }
 
 function createBlockMesh(color, colorIndex = 0) {
-  const isIce = state.themeName === 'ice';
-  
-  const material = new THREE.MeshPhysicalMaterial({
-    color,
-    emissive: color,
-    emissiveIntensity: isIce ? 0.05 : 0.15, // Снизили базовое свечение, чтобы избежать засвета
-    metalness: isIce ? 0.1 : 0.06,
-    roughness: isIce ? 0.05 : 0.22,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1,
-    transparent: true,
-    opacity: isIce ? 1.0 : 0.96,
-    transmission: isIce ? 0.95 : 0.0,
-    ior: isIce ? 1.5 : 1.0,
-    thickness: isIce ? 0.8 : 0.0
-  });
-  const mesh = new THREE.Mesh(blockGeometry, material);
-  mesh.castShadow = !isIce;
-  mesh.receiveShadow = false;
-  mesh.userData.colorIndex = colorIndex;
-  return mesh;
+  const visuals = getCurrentThemeVisuals();
+
+  const group = new THREE.Group();
+  const core = new THREE.Mesh(blockGeometry, new THREE.MeshPhysicalMaterial());
+  core.castShadow = visuals.transmission < 0.2;
+  core.receiveShadow = false;
+
+  const capGeometry = new RoundedBoxGeometry(CELL_SIZE * 0.62, BLOCK_HEIGHT * 0.18, CELL_SIZE * 0.62, 4, 0.09);
+  const cap = new THREE.Mesh(capGeometry, new THREE.MeshPhysicalMaterial());
+  cap.position.y = BLOCK_HEIGHT * 0.24;
+  cap.castShadow = false;
+
+  const shadow = new THREE.Mesh(
+    new THREE.CylinderGeometry(CELL_SIZE * visuals.shadowScale * 0.52, CELL_SIZE * visuals.shadowScale * 0.62, 0.024, 18),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: visuals.shadowOpacity, depthWrite: false })
+  );
+  shadow.position.y = -BLOCK_HEIGHT * 0.52;
+  shadow.scale.y = 0.55;
+
+  group.add(shadow, core, cap);
+  group.userData.colorIndex = colorIndex;
+  group.userData.parts = { core, cap, shadow };
+
+  updateBlockAppearance(group, color, state.themeName);
+  return group;
 }
 
 function pulsePlacedCells(cells) {
@@ -899,7 +1025,7 @@ function clearCompletedLines(lines) {
 
     animateValue(520, (t) => {
       const glow = Math.sin(t * Math.PI);
-      mesh.material.emissiveIntensity = 0.3 + glow * 1.2; // Мягкая вспышка
+      pulseBlockAppearance(mesh, 0.16 + glow * 0.44);
       mesh.position.y = baseY + glow * 0.46;
       const s = baseScale * (1 - easeInCubic(t));
       mesh.scale.setScalar(Math.max(0.01, s));
@@ -908,7 +1034,7 @@ function clearCompletedLines(lines) {
       if (t > 0.25 && t < 0.38) spawnParticles(mesh.position, theme.blocks[cell.colorIndex % theme.blocks.length]);
     }, index * 16, () => {
       blockGroup.remove(mesh);
-      mesh.material.dispose?.();
+      disposeBlockMesh(mesh);
     });
   });
 }
@@ -1131,6 +1257,7 @@ function showCombo(lineCount) {
 // -------------------- Темы и качество --------------------
 function applyTheme(themeName) {
   const theme = THEMES[themeName] || THEMES.neon;
+  const visuals = getThemeVisuals(themeName);
   const root = document.documentElement;
   root.style.setProperty('--bg-a', theme.bgA);
   root.style.setProperty('--bg-b', theme.bgB);
@@ -1142,22 +1269,44 @@ function applyTheme(themeName) {
   if (!scene) return;
   scene.background = new THREE.Color(theme.scene);
   scene.fog.color = new THREE.Color(theme.scene);
+
+  bloomPass && (bloomPass.threshold = visuals.bloomThreshold);
+  bloomPass && (bloomPass.strength = visuals.bloomStrength * getBloomQualityScale());
+  bloomPass && (bloomPass.radius = visuals.bloomRadius);
+
   pointLight.color = new THREE.Color(theme.accent);
+  pointLight.intensity = visuals.accentLight;
+  fillLight.color = new THREE.Color(mixColor(theme.accent2, 0xffffff, 0.55));
+  rimLightLeft.color = new THREE.Color(theme.accent);
+  rimLightLeft.intensity = visuals.leftRim;
+  rimLightRight.color = new THREE.Color(theme.accent2);
+  rimLightRight.intensity = visuals.rightRim;
 
   boardBaseMaterial?.color.set(theme.board);
   boardBaseMaterial?.emissive.set(theme.accent);
+  if (boardBaseMaterial) boardBaseMaterial.emissiveIntensity = visuals.boardGlow;
   boardGroup?.children.forEach((child) => {
     if (child.userData?.isRim && child.material) {
       child.material.color.set(theme.board);
       child.material.emissive.set(theme.accent);
+      child.material.emissiveIntensity = visuals.rimGlow;
     }
   });
   tileMaterial?.color.set(theme.tile);
   tileMaterial?.emissive.set(theme.tileLine);
+  if (tileMaterial) tileMaterial.emissiveIntensity = visuals.tileGlow;
   ghostGoodMaterial?.color.set(theme.good);
   ghostGoodMaterial?.emissive.set(theme.good);
+  if (ghostGoodMaterial) ghostGoodMaterial.emissiveIntensity = Math.min(0.42, visuals.blockEmissive * 5.2);
   ghostBadMaterial?.color.set(theme.bad);
   ghostBadMaterial?.emissive.set(theme.bad);
+  if (ghostBadMaterial) ghostBadMaterial.emissiveIntensity = Math.min(0.42, visuals.blockEmissive * 5.2);
+
+  boardGroup?.children.forEach((child) => {
+    if (child.material && child.position?.y < 0.04 && !child.userData?.isRim && child !== boardBase) {
+      child.material.emissiveIntensity = visuals.rimGlow * 1.25;
+    }
+  });
 
   scene.children.forEach((child) => {
     if (child.name === 'ambient-dust') child.material.color.set(theme.accent);
@@ -1167,18 +1316,8 @@ function applyTheme(themeName) {
     for (let col = 0; col < GRID_SIZE; col++) {
       const cell = state.grid[row]?.[col];
       if (!cell?.mesh) continue;
-      
       const color = theme.blocks[cell.colorIndex % theme.blocks.length];
-      const isIce = themeName === 'ice';
-      
-      cell.mesh.material.color.set(color);
-      cell.mesh.material.emissive.set(color);
-      cell.mesh.material.emissiveIntensity = isIce ? 0.05 : 0.15; // Снижено свечение
-      cell.mesh.material.transmission = isIce ? 0.95 : 0.0;
-      cell.mesh.material.ior = isIce ? 1.5 : 1.0;
-      cell.mesh.material.thickness = isIce ? 0.8 : 0.0;
-      cell.mesh.material.opacity = isIce ? 1.0 : 0.96;
-      cell.mesh.castShadow = !isIce;
+      updateBlockAppearance(cell.mesh, color, themeName);
     }
   }
 }
@@ -1195,6 +1334,12 @@ function applyQuality(quality) {
   renderer.shadowMap.enabled = !low;
   if (keyLight) keyLight.castShadow = !low;
   if (keyLight?.shadow?.mapSize) keyLight.shadow.mapSize.set(high ? 2048 : 1024, high ? 2048 : 1024);
+  if (bloomPass) {
+    const visuals = getCurrentThemeVisuals();
+    bloomPass.threshold = visuals.bloomThreshold + (low ? 0.03 : 0);
+    bloomPass.radius = visuals.bloomRadius;
+    bloomPass.strength = visuals.bloomStrength * getBloomQualityScale();
+  }
 }
 
 // -------------------- Звук и вибрация --------------------
@@ -1291,7 +1436,10 @@ function animate() {
   updateParticles(delta);
   updateCameraShake(delta);
 
-  pointLight.intensity = 1.85 + Math.sin(elapsed * 1.15) * 0.18;
+  const visuals = getCurrentThemeVisuals();
+  pointLight.intensity = visuals.accentLight + Math.sin(elapsed * 1.15) * visuals.accentLightPulse;
+  rimLightLeft.intensity = visuals.leftRim + Math.sin(elapsed * 0.8 + 0.6) * 0.03;
+  rimLightRight.intensity = visuals.rightRim + Math.sin(elapsed * 0.72 + 1.4) * 0.025;
 
   composer.render();
 }
@@ -1328,7 +1476,7 @@ function spawnParticles(origin, color) {
     const material = new THREE.MeshStandardMaterial({
       color,
       emissive: color,
-      emissiveIntensity: isIce ? 0.2 : 0.8, // Отрегулировано под Bloom
+      emissiveIntensity: getCurrentThemeVisuals().particleEmissive,
       roughness: 0.4,
       transparent: true,
       opacity: 0.9
