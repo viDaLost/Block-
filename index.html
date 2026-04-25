@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Crystal Blocks 3D</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <div id="ui-layer">
+        <div class="top-bar">
+            <div class="title">CRYSTAL BLOCKS</div>
+            <div class="scores">
+                <div class="score-box">СЧЁТ: <span id="current-score">0</span></div>
+                <div class="score-box">РЕКОРД: <span id="best-score">0</span></div>
+            </div>
+        </div>
+        <div id="combo-text" class="hidden">COMBO!</div>
+    </div>
+
+    <div id="start-screen" class="modal active">
+        <h1>Crystal Blocks 3D</h1>
+        <p>Перетаскивай фигуры на поле.</p>
+        <p>Собирай линии, чтобы очистить их.</p>
+        <button id="btn-start">ИГРАТЬ</button>
+        <div class="settings">
+            <label><input type="checkbox" id="cb-sound" checked> Звук</label>
+            <label><input type="checkbox" id="cb-vibration" checked> Вибрация</label>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="modal">
+        <h1>ИГРА ОКОНЧЕНА</h1>
+        <div class="final-score">Счёт: <span id="final-score-val">0</span></div>
+        <button id="btn-restart">НАЧАТЬ ЗАНОВО</button>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
