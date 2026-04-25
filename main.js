@@ -55,6 +55,27 @@ const THEMES = {
     accent: '#b36bff', accent2: '#ff5fd2', good: '#65ffd8', bad: '#ff4d6d',
     board: '#151128', tile: '#251b43', tileLine: '#7d55ff',
     blocks: ['#b36bff', '#ff5fd2', '#5ddcff', '#fff07a', '#8cffd1', '#ff8a5d', '#6b7cff', '#f76bff', '#72ff6b', '#ffffff', '#ffb000', '#00ffd5', '#ff6ea8', '#8aa2ff']
+  },
+  toxic: {
+    name: 'Toxic',
+    bgA: '#050a05', bgB: '#101a10', scene: '#081208',
+    accent: '#55ff22', accent2: '#aaff00', good: '#77ff33', bad: '#ff3311',
+    board: '#111811', tile: '#1a261a', tileLine: '#264d26',
+    blocks: ['#55ff22', '#aaff00', '#77ff33', '#ccff00', '#22ff55', '#bbff33', '#99ff22', '#e6ff00', '#44ff44', '#ddff11', '#ffffff', '#88ff00', '#66ff11', '#33ff33']
+  },
+  tokyo: {
+    name: 'Tokyo',
+    bgA: '#0d0505', bgB: '#1a0a0a', scene: '#120808',
+    accent: '#ff003c', accent2: '#ffffff', good: '#ff3366', bad: '#440000',
+    board: '#1a1212', tile: '#261a1a', tileLine: '#4d2626',
+    blocks: ['#ff003c', '#ff3366', '#ff1a1a', '#ffffff', '#cc0033', '#ff4d4d', '#e6002e', '#ff6666', '#99001f', '#ff8080', '#b30024', '#ff9999', '#ffccd4', '#ff0022']
+  },
+  royal: {
+    name: 'Royal',
+    bgA: '#120e05', bgB: '#261d0a', scene: '#171207',
+    accent: '#ffcc00', accent2: '#ffaa00', good: '#ffdd33', bad: '#ff4422',
+    board: '#262012', tile: '#332a1a', tileLine: '#594624',
+    blocks: ['#ffcc00', '#ffaa00', '#ffdd33', '#e6b800', '#ffbb33', '#cc9900', '#ffee66', '#ffc34d', '#b38600', '#ffcc66', '#ffd633', '#ffdb4d', '#ffffff', '#e6a800']
   }
 };
 
@@ -196,12 +217,12 @@ function initThree() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   sceneWrap.appendChild(renderer.domElement);
 
-  // --- Постобработка (Bloom) ---
+  // --- Постобработка (Bloom) с более мягкими настройками, чтобы избежать засвета ---
   const renderScene = new RenderPass(scene, camera);
   const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-  bloomPass.threshold = 0.25;
-  bloomPass.strength = 0.95; // Интенсивность свечения
-  bloomPass.radius = 0.6;
+  bloomPass.threshold = 0.45; // Повышен порог: светится только то, что действительно яркое
+  bloomPass.strength = 0.45;  // Снижена сила свечения
+  bloomPass.radius = 0.5;
   
   composer = new EffectComposer(renderer);
   composer.addPass(renderScene);
@@ -272,7 +293,7 @@ function createBoard() {
   ghostGoodMaterial = new THREE.MeshStandardMaterial({
     color: theme.good,
     emissive: theme.good,
-    emissiveIntensity: 1.5, // Усилено для Bloom
+    emissiveIntensity: 0.8,
     transparent: true,
     opacity: 0.58,
     roughness: 0.35
@@ -281,7 +302,7 @@ function createBoard() {
   ghostBadMaterial = new THREE.MeshStandardMaterial({
     color: theme.bad,
     emissive: theme.bad,
-    emissiveIntensity: 1.5, // Усилено для Bloom
+    emissiveIntensity: 0.8,
     transparent: true,
     opacity: 0.58,
     roughness: 0.35
@@ -325,7 +346,7 @@ function createBoard() {
     metalness: 0.25,
     roughness: 0.34,
     emissive: theme.accent,
-    emissiveIntensity: 0.4, // Усилено для Bloom
+    emissiveIntensity: 0.15,
     transparent: true,
     opacity: 0.22
   });
@@ -384,7 +405,7 @@ function resize() {
   const width = window.innerWidth;
   const height = window.innerHeight;
   renderer.setSize(width, height);
-  composer.setSize(width, height); // Важно обновлять composer
+  composer.setSize(width, height);
 
   const aspect = width / height;
   const boardWorldSpan = (GRID_SIZE - 1) * CELL_STEP + CELL_SIZE + 1.25;
@@ -521,36 +542,9 @@ function renderPieces(replacedIndex = null) {
     const mini = createPieceMini(piece, theme.blocks[piece.colorIndex % theme.blocks.length], 'piece-mini');
     card.appendChild(mini);
 
-    // Добавляем кнопку вращения
-    if (!piece.placed && piece.cells.length > 1) {
-      const rotBtn = document.createElement('div');
-      rotBtn.className = 'rotate-btn';
-      rotBtn.innerHTML = '↻';
-      rotBtn.addEventListener('pointerdown', (e) => {
-        e.stopPropagation();
-        rotatePiece(index);
-      });
-      card.appendChild(rotBtn);
-    }
-
     card.addEventListener('pointerdown', (event) => onPiecePointerDown(event, index), { passive: false });
     piecesTray.appendChild(card);
   });
-}
-
-function rotatePiece(index) {
-  if (state.locked || state.paused || state.gameOver) return;
-  playSound('select');
-  vibrate(15);
-  const piece = state.pieces[index];
-  // Поворот на 90 градусов по часовой: (r, c) -> (c, -r)
-  piece.cells = normalizeCells(piece.cells.map(([r, c]) => [c, -r]));
-  renderPieces(index);
-  
-  // Проверяем Game Over после поворота (возможно фигура теперь никуда не встанет)
-  if (!anyMoveAvailable()) {
-    setTimeout(() => showGameOver(), 400);
-  }
 }
 
 function createPieceMini(piece, color, className = 'piece-mini') {
@@ -679,7 +673,6 @@ function endBoardPan() {
 }
 
 function updateDragGhostPosition(clientX, clientY) {
-  // Умное динамическое смещение для мобилок в зависимости от высоты экрана
   const vhOffset = window.innerHeight * 0.12; 
   dragGhostUi.style.left = `${clientX}px`;
   dragGhostUi.style.top = `${clientY - vhOffset}px`;
@@ -831,24 +824,23 @@ async function placePiece(piece, pieceIndex, startRow, startCol) {
 
 function createBlockMesh(color, colorIndex = 0) {
   const isIce = state.themeName === 'ice';
-  const isNeon = state.themeName === 'neon' || state.themeName === 'space';
   
   const material = new THREE.MeshPhysicalMaterial({
     color,
     emissive: color,
-    emissiveIntensity: isIce ? 0.05 : (isNeon ? 0.4 : 0.16),
+    emissiveIntensity: isIce ? 0.05 : 0.15, // Снизили базовое свечение, чтобы избежать засвета
     metalness: isIce ? 0.1 : 0.06,
     roughness: isIce ? 0.05 : 0.22,
     clearcoat: 1.0,
     clearcoatRoughness: 0.1,
     transparent: true,
     opacity: isIce ? 1.0 : 0.96,
-    transmission: isIce ? 0.95 : 0.0, // Эффект стекла
+    transmission: isIce ? 0.95 : 0.0,
     ior: isIce ? 1.5 : 1.0,
     thickness: isIce ? 0.8 : 0.0
   });
   const mesh = new THREE.Mesh(blockGeometry, material);
-  mesh.castShadow = !isIce; // Стекло не должно отбрасывать плотную тень
+  mesh.castShadow = !isIce;
   mesh.receiveShadow = false;
   mesh.userData.colorIndex = colorIndex;
   return mesh;
@@ -907,7 +899,7 @@ function clearCompletedLines(lines) {
 
     animateValue(520, (t) => {
       const glow = Math.sin(t * Math.PI);
-      mesh.material.emissiveIntensity = 0.5 + glow * 2.5; // Яркая вспышка для Bloom
+      mesh.material.emissiveIntensity = 0.3 + glow * 1.2; // Мягкая вспышка
       mesh.position.y = baseY + glow * 0.46;
       const s = baseScale * (1 - easeInCubic(t));
       mesh.scale.setScalar(Math.max(0.01, s));
@@ -1178,11 +1170,10 @@ function applyTheme(themeName) {
       
       const color = theme.blocks[cell.colorIndex % theme.blocks.length];
       const isIce = themeName === 'ice';
-      const isNeon = themeName === 'neon' || themeName === 'space';
       
       cell.mesh.material.color.set(color);
       cell.mesh.material.emissive.set(color);
-      cell.mesh.material.emissiveIntensity = isIce ? 0.05 : (isNeon ? 0.4 : 0.16);
+      cell.mesh.material.emissiveIntensity = isIce ? 0.05 : 0.15; // Снижено свечение
       cell.mesh.material.transmission = isIce ? 0.95 : 0.0;
       cell.mesh.material.ior = isIce ? 1.5 : 1.0;
       cell.mesh.material.thickness = isIce ? 0.8 : 0.0;
@@ -1279,7 +1270,6 @@ function playSoftNoise(startTime, amount, length, destination) {
 
 function vibrate(pattern) {
   if (!state.vibration) return;
-  // Интеграция тактильной отдачи для Telegram Web App (решает проблему iOS)
   if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
     if (Array.isArray(pattern)) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
@@ -1288,7 +1278,6 @@ function vibrate(pattern) {
     }
     return;
   }
-  // Fallback для обычного браузера Android
   if (navigator.vibrate) navigator.vibrate(pattern);
 }
 
@@ -1304,7 +1293,6 @@ function animate() {
 
   pointLight.intensity = 1.85 + Math.sin(elapsed * 1.15) * 0.18;
 
-  // Используем composer вместо базового renderer для Bloom эффекта
   composer.render();
 }
 
@@ -1334,13 +1322,13 @@ function updateAnimations(now) {
 function spawnParticles(origin, color) {
   if (state.quality === 'low') return;
   const amount = state.quality === 'high' ? 10 : 6;
-  const isNeon = state.themeName === 'neon' || state.themeName === 'space';
+  const isIce = state.themeName === 'ice';
   
   for (let i = 0; i < amount; i++) {
     const material = new THREE.MeshStandardMaterial({
       color,
       emissive: color,
-      emissiveIntensity: isNeon ? 2.0 : 0.7, // Ярче для Bloom
+      emissiveIntensity: isIce ? 0.2 : 0.8, // Отрегулировано под Bloom
       roughness: 0.4,
       transparent: true,
       opacity: 0.9
