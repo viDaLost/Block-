@@ -1,43 +1,134 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Crystal Blocks 3D</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#070a18" />
+  <title>Crystal Forge 3D</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div id="game-container"></div>
+  <div id="app" class="app">
+    <div id="sceneWrap" class="scene-wrap"></div>
 
-    <div id="ui-layer">
-        <div class="top-bar">
-            <div class="title">CRYSTAL BLOCKS</div>
-            <div class="scores">
-                <div class="score-box">СЧЁТ: <span id="current-score">0</span></div>
-                <div class="score-box">РЕКОРД: <span id="best-score">0</span></div>
-            </div>
+    <header class="top-ui">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1>Crystal Forge 3D</h1>
+          <p>3D block puzzle</p>
         </div>
-        <div id="combo-text" class="hidden">COMBO!</div>
-    </div>
+      </div>
 
-    <div id="start-screen" class="modal active">
-        <h1>Crystal Blocks 3D</h1>
-        <p>Перетаскивай фигуры на поле.</p>
-        <p>Собирай линии, чтобы очистить их.</p>
-        <button id="btn-start">ИГРАТЬ</button>
-        <div class="settings">
-            <label><input type="checkbox" id="cb-sound" checked> Звук</label>
-            <label><input type="checkbox" id="cb-vibration" checked> Вибрация</label>
+      <div class="score-row" aria-label="Счёт">
+        <div class="score-card">
+          <span>Счёт</span>
+          <strong id="scoreText">0</strong>
         </div>
+        <div class="score-card">
+          <span>Рекорд</span>
+          <strong id="bestText">0</strong>
+        </div>
+        <div id="comboBadge" class="combo-badge hidden">×1</div>
+      </div>
+
+      <div class="top-actions">
+        <button id="pauseBtn" class="icon-btn" aria-label="Пауза">Ⅱ</button>
+        <button id="settingsBtn" class="icon-btn" aria-label="Настройки">⚙</button>
+      </div>
+    </header>
+
+    <main class="play-layer" aria-label="Игровая область">
+      <div id="hintBubble" class="hint-bubble hidden">Перетащи фигуру на поле</div>
+    </main>
+
+    <section class="pieces-panel" aria-label="Доступные фигуры">
+      <div class="panel-title">
+        <span>Фигуры</span>
+        <small>тяни вверх на поле</small>
+      </div>
+      <div id="piecesTray" class="pieces-tray"></div>
+    </section>
+
+    <div id="dragGhostUi" class="drag-ghost-ui hidden"></div>
+    <div id="toast" class="toast hidden">СУПЕР!</div>
+
+    <div id="startScreen" class="overlay visible">
+      <div class="modal start-modal">
+        <div class="big-logo"></div>
+        <h2>Crystal Forge 3D</h2>
+        <p class="modal-subtitle">Премиальный 3D‑пазл для телефона: ставь кристаллические блоки, очищай линии и собирай комбо.</p>
+        <div class="tutorial">
+          <div><b>1</b><span>Перетащи фигуру на поле</span></div>
+          <div><b>2</b><span>Заполняй ряды и столбцы</span></div>
+          <div><b>3</b><span>Очищай линии и умножай очки</span></div>
+        </div>
+        <button id="playBtn" class="primary-btn">Играть</button>
+        <button id="startSettingsBtn" class="secondary-btn">Настройки</button>
+      </div>
     </div>
 
-    <div id="game-over-screen" class="modal">
-        <h1>ИГРА ОКОНЧЕНА</h1>
-        <div class="final-score">Счёт: <span id="final-score-val">0</span></div>
-        <button id="btn-restart">НАЧАТЬ ЗАНОВО</button>
+    <div id="pauseScreen" class="overlay">
+      <div class="modal compact-modal">
+        <h2>Пауза</h2>
+        <p class="modal-subtitle">Игра сохранена на экране. Продолжай, когда будешь готов.</p>
+        <button id="resumeBtn" class="primary-btn">Продолжить</button>
+        <button id="restartBtn" class="secondary-btn">Начать заново</button>
+      </div>
     </div>
 
-    <script src="main.js"></script>
+    <div id="gameOverScreen" class="overlay">
+      <div class="modal compact-modal">
+        <h2>Игра окончена</h2>
+        <p class="modal-subtitle">Ходов больше нет</p>
+        <div class="result-grid">
+          <div><span>Итог</span><strong id="finalScoreText">0</strong></div>
+          <div><span>Рекорд</span><strong id="finalBestText">0</strong></div>
+        </div>
+        <button id="continueBtn" class="primary-btn">Продолжить</button>
+        <button id="gameOverRestartBtn" class="secondary-btn">Начать заново</button>
+      </div>
+    </div>
+
+    <div id="settingsScreen" class="overlay">
+      <div class="modal settings-modal">
+        <h2>Настройки</h2>
+
+        <label class="setting-line">
+          <span>Звук</span>
+          <input id="soundToggle" type="checkbox" checked />
+        </label>
+
+        <label class="setting-line">
+          <span>Вибрация</span>
+          <input id="vibrationToggle" type="checkbox" checked />
+        </label>
+
+        <label class="setting-line column">
+          <span>Качество графики</span>
+          <select id="qualitySelect">
+            <option value="low">Низкое</option>
+            <option value="medium" selected>Среднее</option>
+            <option value="high">Высокое</option>
+          </select>
+        </label>
+
+        <label class="setting-line column">
+          <span>Тема</span>
+          <select id="themeSelect">
+            <option value="neon">Neon</option>
+            <option value="crystal">Crystal</option>
+            <option value="lava">Lava</option>
+            <option value="ice">Ice</option>
+            <option value="space">Space</option>
+          </select>
+        </label>
+
+        <button id="closeSettingsBtn" class="primary-btn">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="main.js"></script>
 </body>
 </html>
