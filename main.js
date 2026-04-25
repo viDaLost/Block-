@@ -23,35 +23,35 @@ const THEMES = {
     bgA: '#050716', bgB: '#101a34', scene: '#060a16',
     accent: '#35e7ff', accent2: '#9d6bff', good: '#66ffc6', bad: '#ff536f',
     board: '#131d37', tile: '#202d4c', tileLine: '#3b4e7c',
-    blocks: ['#35e7ff', '#9d6bff', '#ff4fb8', '#7dffb2', '#ffce4a']
+    blocks: ['#35e7ff', '#9d6bff', '#ff4fb8', '#7dffb2', '#ffce4a', '#ff7a59', '#59a7ff', '#f7ff6a', '#c56bff', '#4dffd8']
   },
   crystal: {
     name: 'Crystal',
     bgA: '#061321', bgB: '#153b58', scene: '#071421',
     accent: '#8cf7ff', accent2: '#d7f8ff', good: '#b8fff0', bad: '#ff6684',
     board: '#183349', tile: '#24516a', tileLine: '#6fcce8',
-    blocks: ['#8cf7ff', '#b4fff2', '#d7f8ff', '#79b9ff', '#caa8ff']
+    blocks: ['#8cf7ff', '#b4fff2', '#d7f8ff', '#79b9ff', '#caa8ff', '#ffb7ef', '#9fffcb', '#fff59a', '#9fb7ff', '#ffffff']
   },
   lava: {
     name: 'Lava',
     bgA: '#120606', bgB: '#35100f', scene: '#140808',
     accent: '#ff8a2a', accent2: '#ff335c', good: '#ffd166', bad: '#ff335c',
     board: '#2a1514', tile: '#4a201d', tileLine: '#ff8a2a',
-    blocks: ['#ff8a2a', '#ff335c', '#ffd166', '#ff5e1a', '#ffb84d']
+    blocks: ['#ff8a2a', '#ff335c', '#ffd166', '#ff5e1a', '#ffb84d', '#ff2a8a', '#ffef5a', '#d94a2b', '#ff6f3c', '#ffa600']
   },
   ice: {
     name: 'Ice',
     bgA: '#031019', bgB: '#12314a', scene: '#071924',
     accent: '#71d7ff', accent2: '#b6e8ff', good: '#b8fff0', bad: '#ff6d8d',
     board: '#123044', tile: '#1d4962', tileLine: '#89dfff',
-    blocks: ['#71d7ff', '#b6e8ff', '#86ffc8', '#e3f7ff', '#7aa6ff']
+    blocks: ['#71d7ff', '#b6e8ff', '#86ffc8', '#e3f7ff', '#7aa6ff', '#c7f6ff', '#a0ffef', '#d8ddff', '#ffffff', '#6ed4ff']
   },
   space: {
     name: 'Space',
     bgA: '#05040d', bgB: '#171033', scene: '#060411',
     accent: '#b36bff', accent2: '#ff5fd2', good: '#65ffd8', bad: '#ff4d6d',
     board: '#151128', tile: '#251b43', tileLine: '#7d55ff',
-    blocks: ['#b36bff', '#ff5fd2', '#5ddcff', '#fff07a', '#8cffd1']
+    blocks: ['#b36bff', '#ff5fd2', '#5ddcff', '#fff07a', '#8cffd1', '#ff8a5d', '#6b7cff', '#f76bff', '#72ff6b', '#ffffff']
   }
 };
 
@@ -96,7 +96,11 @@ let boardPositions = [];
 let clock = new THREE.Clock();
 const animations = [];
 const particles = [];
-const baseCameraPosition = new THREE.Vector3(5.9, 8.4, 7.2);
+// Камера почти сверху: поле читается как настоящая мобильная puzzle-доска.
+const baseCameraOffset = new THREE.Vector3(0, 10.8, 2.35);
+const cameraTarget = new THREE.Vector3(0, 0, -0.15);
+const desiredCameraPosition = new THREE.Vector3();
+let boardPanGesture = null;
 let cameraShake = { time: 0, duration: 0, strength: 0 };
 
 // -------------------- Состояние игры --------------------
@@ -171,8 +175,9 @@ function initThree() {
   scene.fog = new THREE.Fog(THEMES[state.themeName].scene, 14, 28);
 
   camera = new THREE.OrthographicCamera(-6, 6, 6, -6, 0.1, 100);
-  camera.position.copy(baseCameraPosition);
-  camera.lookAt(0, 0, 0);
+  desiredCameraPosition.copy(cameraTarget).add(baseCameraOffset);
+  camera.position.copy(desiredCameraPosition);
+  camera.lookAt(cameraTarget);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -321,11 +326,19 @@ function resize() {
   renderer.setSize(width, height);
 
   const aspect = width / height;
-  const compactHeight = height < 740;
-  const portraitZoom = compactHeight ? 10.6 : 11.3;
-  const landscapeZoom = 9.4;
-  const viewHeight = aspect < 1 ? portraitZoom : landscapeZoom;
-  const viewWidth = viewHeight * aspect;
+  const boardWorldSpan = (GRID_SIZE - 1) * CELL_STEP + CELL_SIZE + 1.25;
+  let viewWidth;
+  let viewHeight;
+
+  // В портретной ориентации ширина экрана ограничивает поле сильнее всего.
+  // Поэтому считаем ортографическую камеру от ширины, чтобы игрок всегда видел все 8×8 клеток.
+  if (aspect < 1) {
+    viewWidth = boardWorldSpan * 1.12;
+    viewHeight = viewWidth / aspect;
+  } else {
+    viewHeight = boardWorldSpan * 1.16;
+    viewWidth = viewHeight * aspect;
+  }
 
   camera.left = -viewWidth / 2;
   camera.right = viewWidth / 2;
@@ -333,6 +346,7 @@ function resize() {
   camera.bottom = -viewHeight / 2;
   camera.updateProjectionMatrix();
 }
+
 
 // -------------------- UI и события --------------------
 function wireUI() {
@@ -369,6 +383,9 @@ function wireUI() {
     saveSettings();
     renderPieces();
   });
+
+  renderer.domElement.addEventListener('pointerdown', onBoardPointerDown, { passive: false });
+  renderer.domElement.addEventListener('dblclick', resetBoardPan, { passive: true });
 
   window.addEventListener('pointermove', onPointerMove, { passive: false });
   window.addEventListener('pointerup', onPointerUp, { passive: false });
@@ -435,11 +452,15 @@ function renderPieces() {
 
   state.pieces.forEach((piece, index) => {
     const card = document.createElement('button');
-    card.className = 'piece-card';
+    card.className = 'piece-card spawn-in';
     card.type = 'button';
+    card.style.animationDelay = `${index * 70}ms`;
     card.dataset.index = String(index);
     if (piece.placed) card.classList.add('used');
-    if (!piece.placed && !canPieceFitAnywhere(piece)) card.classList.add('disabled');
+    if (!piece.placed && !canPieceFitAnywhere(piece)) {
+      card.classList.add('disabled');
+      card.title = 'Эта фигура сейчас не помещается';
+    }
 
     const mini = createPieceMini(piece, theme.blocks[piece.colorIndex % theme.blocks.length], 'piece-mini');
     card.appendChild(mini);
@@ -457,6 +478,15 @@ function createPieceMini(piece, color, className = 'piece-mini') {
   mini.style.setProperty('--rows', String(bounds.rows));
   mini.style.setProperty('--piece-color', color);
 
+  // Нижние фигуры теперь рисуются строго сверху и в той же ориентации,
+  // в которой они лягут на поле. Размер автоматически ужимается для длинных линий.
+  const maxCells = Math.max(bounds.cols, bounds.rows);
+  const isDrag = className.includes('drag');
+  const available = isDrag ? 142 : (window.innerWidth <= 370 ? 74 : 88);
+  const maxUnit = isDrag ? 28 : (window.innerWidth <= 370 ? 17 : 20);
+  const unit = Math.max(isDrag ? 18 : 13, Math.min(maxUnit, Math.floor((available - (maxCells - 1) * 5) / maxCells)));
+  mini.style.setProperty('--cell', `${unit}px`);
+
   const occupied = new Set(piece.cells.map(([r, c]) => `${r}:${c}`));
   for (let row = 0; row < bounds.rows; row++) {
     for (let col = 0; col < bounds.cols; col++) {
@@ -468,6 +498,7 @@ function createPieceMini(piece, color, className = 'piece-mini') {
   }
   return mini;
 }
+
 
 function onPiecePointerDown(event, index) {
   event.preventDefault();
@@ -497,28 +528,44 @@ function onPiecePointerDown(event, index) {
 }
 
 function onPointerMove(event) {
-  if (!state.activeDrag || event.pointerId !== state.activeDrag.pointerId) return;
-  event.preventDefault();
-  updateDragGhostPosition(event.clientX, event.clientY);
-  updateBoardHover(event.clientX, event.clientY);
+  if (state.activeDrag) {
+    if (event.pointerId !== state.activeDrag.pointerId) return;
+    event.preventDefault();
+    updateDragGhostPosition(event.clientX, event.clientY);
+    updateBoardHover(event.clientX, event.clientY);
+    return;
+  }
+
+  if (boardPanGesture && event.pointerId === boardPanGesture.pointerId) {
+    event.preventDefault();
+    updateBoardPan(event.clientX, event.clientY);
+  }
 }
 
 function onPointerUp(event) {
-  if (!state.activeDrag || event.pointerId !== state.activeDrag.pointerId) return;
-  event.preventDefault();
+  if (state.activeDrag) {
+    if (event.pointerId !== state.activeDrag.pointerId) return;
+    event.preventDefault();
 
-  const drag = state.activeDrag;
-  const hover = drag.hover;
-  clearGhostPreview();
-  dragGhostUi.classList.add('hidden');
-  state.activeDrag = null;
+    const drag = state.activeDrag;
+    const hover = drag.hover;
+    clearGhostPreview();
+    dragGhostUi.classList.add('hidden');
+    state.activeDrag = null;
 
-  if (hover?.valid) {
-    placePiece(drag.piece, drag.index, hover.row, hover.col);
-  } else {
-    drag.card.classList.remove('used');
-    playSound('error');
-    vibrate(34);
+    if (hover?.valid) {
+      placePiece(drag.piece, drag.index, hover.row, hover.col);
+    } else {
+      drag.card.classList.remove('used');
+      playSound('error');
+      vibrate(34);
+    }
+    return;
+  }
+
+  if (boardPanGesture && event.pointerId === boardPanGesture.pointerId) {
+    event.preventDefault();
+    endBoardPan();
   }
 }
 
@@ -528,6 +575,44 @@ function cancelDrag() {
   dragGhostUi.classList.add('hidden');
   clearGhostPreview();
   state.activeDrag = null;
+  boardPanGesture = null;
+}
+
+function onBoardPointerDown(event) {
+  if (state.activeDrag || event.button > 0) return;
+  if (!state.gameStarted || state.gameOver || state.paused || state.locked) return;
+  event.preventDefault();
+
+  boardPanGesture = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    targetX: cameraTarget.x,
+    targetZ: cameraTarget.z
+  };
+  renderer.domElement.setPointerCapture?.(event.pointerId);
+}
+
+function updateBoardPan(clientX, clientY) {
+  if (!boardPanGesture) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  const viewWidth = camera.right - camera.left;
+  const viewHeight = camera.top - camera.bottom;
+  const dx = -((clientX - boardPanGesture.startX) / rect.width) * viewWidth;
+  const dz = -((clientY - boardPanGesture.startY) / rect.height) * viewHeight * 0.72;
+
+  cameraTarget.x = THREE.MathUtils.clamp(boardPanGesture.targetX + dx, -1.35, 1.35);
+  cameraTarget.z = THREE.MathUtils.clamp(boardPanGesture.targetZ + dz, -1.55, 1.25);
+}
+
+function endBoardPan() {
+  if (!boardPanGesture) return;
+  renderer.domElement.releasePointerCapture?.(boardPanGesture.pointerId);
+  boardPanGesture = null;
+}
+
+function resetBoardPan() {
+  cameraTarget.set(0, 0, -0.15);
 }
 
 function updateDragGhostPosition(clientX, clientY) {
@@ -741,6 +826,7 @@ function findCompletedLines() {
 
 function clearCompletedLines(lines) {
   const theme = THEMES[state.themeName];
+  flashCompletedLines(lines);
 
   lines.cells.forEach(({ row, col }, index) => {
     const cell = state.grid[row][col];
@@ -748,19 +834,53 @@ function clearCompletedLines(lines) {
     const mesh = cell.mesh;
     state.grid[row][col] = null;
 
-    spawnParticles(mesh.position, theme.blocks[cell.colorIndex % theme.blocks.length]);
+    const baseY = mesh.position.y;
+    const baseScale = mesh.scale.x || 1;
 
-    animateValue(460, (t) => {
+    animateValue(520, (t) => {
       const glow = Math.sin(t * Math.PI);
-      mesh.material.emissiveIntensity = 0.2 + glow * 0.85;
-      mesh.position.y += glow * 0.006;
-      const s = 1 - easeInCubic(t);
+      mesh.material.emissiveIntensity = 0.22 + glow * 1.15;
+      mesh.position.y = baseY + glow * 0.46;
+      const s = baseScale * (1 - easeInCubic(t));
       mesh.scale.setScalar(Math.max(0.01, s));
-      mesh.rotation.x += 0.035;
-      mesh.rotation.z += 0.026;
-    }, index * 14, () => {
+      mesh.rotation.x += 0.045;
+      mesh.rotation.z += 0.032;
+      if (t > 0.25 && t < 0.38) spawnParticles(mesh.position, theme.blocks[cell.colorIndex % theme.blocks.length]);
+    }, index * 16, () => {
       blockGroup.remove(mesh);
       mesh.material.dispose?.();
+    });
+  });
+}
+
+function flashCompletedLines(lines) {
+  if (!lines?.cells?.length) return;
+  const theme = THEMES[state.themeName];
+
+  lines.cells.forEach(({ row, col }, index) => {
+    if (!isInside(row, col)) return;
+    const flashGeometry = new THREE.PlaneGeometry(CELL_SIZE * 0.96, CELL_SIZE * 0.96);
+    const material = new THREE.MeshBasicMaterial({
+      color: theme.accent,
+      transparent: true,
+      opacity: 0.0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const flash = new THREE.Mesh(flashGeometry, material);
+    flash.rotation.x = -Math.PI / 2;
+    flash.position.copy(cellToWorld(row, col, 0.68));
+    flash.scale.setScalar(0.6);
+    ghostGroup.add(flash);
+
+    animateValue(310, (t) => {
+      const p = Math.sin(t * Math.PI);
+      flash.scale.setScalar(0.6 + p * 0.62);
+      flash.material.opacity = p * 0.72;
+    }, index * 8, () => {
+      ghostGroup.remove(flash);
+      flash.geometry.dispose?.();
+      flash.material.dispose?.();
     });
   });
 }
@@ -1047,10 +1167,8 @@ function animate() {
   updateParticles(delta);
   updateCameraShake(delta);
 
-  boardGroup.rotation.y = Math.sin(elapsed * 0.45) * 0.008;
-  tileGroup.rotation.y = boardGroup.rotation.y;
-  blockGroup.rotation.y = boardGroup.rotation.y;
-  ghostGroup.rotation.y = boardGroup.rotation.y;
+  // Поле не вращается само: top-down ориентация фигур всегда совпадает с превью в нижней панели.
+  pointLight.intensity = 1.85 + Math.sin(elapsed * 1.15) * 0.18;
 
   renderer.render(scene, camera);
 }
@@ -1080,7 +1198,7 @@ function updateAnimations(now) {
 
 function spawnParticles(origin, color) {
   if (state.quality === 'low') return;
-  const amount = state.quality === 'high' ? 6 : 4;
+  const amount = state.quality === 'high' ? 10 : 6;
   for (let i = 0; i < amount; i++) {
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -1136,20 +1254,22 @@ function shakeCamera(duration = 0.18, strength = 0.18) {
 }
 
 function updateCameraShake(delta) {
-  const target = baseCameraPosition;
+  desiredCameraPosition.copy(cameraTarget).add(baseCameraOffset);
+
   if (cameraShake.time > 0) {
     cameraShake.time -= delta;
     const power = cameraShake.strength * (cameraShake.time / cameraShake.duration);
     camera.position.set(
-      target.x + THREE.MathUtils.randFloatSpread(power),
-      target.y + THREE.MathUtils.randFloatSpread(power * 0.55),
-      target.z + THREE.MathUtils.randFloatSpread(power)
+      desiredCameraPosition.x + THREE.MathUtils.randFloatSpread(power),
+      desiredCameraPosition.y + THREE.MathUtils.randFloatSpread(power * 0.55),
+      desiredCameraPosition.z + THREE.MathUtils.randFloatSpread(power)
     );
   } else {
-    camera.position.lerp(target, 0.12);
+    camera.position.lerp(desiredCameraPosition, 0.16);
   }
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(cameraTarget);
 }
+
 
 // -------------------- Вспомогательные функции --------------------
 function createEmptyGrid() {

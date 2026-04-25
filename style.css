@@ -213,7 +213,7 @@ button {
   left: 10px;
   right: 10px;
   bottom: 0;
-  padding: 12px 12px calc(12px + var(--safe-bottom));
+  padding: 11px 12px calc(11px + var(--safe-bottom));
   border: 1px solid var(--line);
   border-bottom: 0;
   border-radius: 28px 28px 0 0;
@@ -249,7 +249,7 @@ button {
 
 .piece-card {
   position: relative;
-  min-height: 106px;
+  min-height: 104px;
   border-radius: 24px;
   border: 1px solid var(--line);
   background:
@@ -280,45 +280,69 @@ button {
 
 .piece-card.disabled {
   opacity: 0.48;
+  border-color: color-mix(in srgb, var(--bad), transparent 38%);
+}
+
+.piece-card.disabled::before {
+  content: "нет места";
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bad), transparent 78%);
+  color: color-mix(in srgb, var(--bad), white 32%);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.piece-card.spawn-in {
+  animation: pieceCardPop 430ms cubic-bezier(.2, .95, .18, 1.12) both;
 }
 
 .piece-mini,
 .drag-piece-mini {
   display: grid;
-  grid-template-columns: repeat(var(--cols), 18px);
-  grid-template-rows: repeat(var(--rows), 18px);
-  gap: 4px;
-  transform: rotateX(52deg) rotateZ(-36deg);
+  grid-template-columns: repeat(var(--cols), var(--cell));
+  grid-template-rows: repeat(var(--rows), var(--cell));
+  gap: 5px;
+  place-content: center;
   transform-style: preserve-3d;
 }
 
 .piece-cell {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--piece-color), white 30%), var(--piece-color));
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: max(5px, calc(var(--cell) * 0.28));
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.62), transparent 20%),
+    linear-gradient(135deg, color-mix(in srgb, var(--piece-color), white 36%), var(--piece-color) 58%, color-mix(in srgb, var(--piece-color), black 20%));
   box-shadow:
-    7px 7px 0 color-mix(in srgb, var(--piece-color), black 34%),
-    0 0 18px color-mix(in srgb, var(--piece-color), transparent 45%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -4px 10px color-mix(in srgb, var(--piece-color), black 24%),
+    0 0 18px color-mix(in srgb, var(--piece-color), transparent 42%);
+  position: relative;
+}
+
+.piece-cell::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  pointer-events: none;
 }
 
 .drag-ghost-ui {
   position: fixed;
   z-index: 20;
   pointer-events: none;
-  transform: translate3d(-50%, -50%, 0) scale(1.18);
+  transform: translate3d(-50%, -50%, 0) scale(1.12);
   filter: drop-shadow(0 24px 35px rgba(0, 0, 0, 0.45));
-}
-
-.drag-ghost-ui .piece-cell {
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-}
-
-.drag-ghost-ui .drag-piece-mini {
-  grid-template-columns: repeat(var(--cols), 22px);
-  grid-template-rows: repeat(var(--rows), 22px);
 }
 
 .toast {
@@ -565,6 +589,12 @@ button {
   100% { opacity: 0; transform: translate(-50%, -64%) scale(0.88); }
 }
 
+@keyframes pieceCardPop {
+  0% { opacity: 0; transform: translateY(18px) scale(0.82); }
+  62% { opacity: 1; transform: translateY(-4px) scale(1.035); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (max-width: 430px) {
   .top-ui {
     grid-template-columns: 1fr auto;
@@ -589,16 +619,9 @@ button {
     padding-right: 10px;
   }
 
-  .piece-mini {
-    grid-template-columns: repeat(var(--cols), 16px);
-    grid-template-rows: repeat(var(--rows), 16px);
+  .piece-mini,
+  .drag-piece-mini {
     gap: 4px;
-  }
-
-  .piece-cell {
-    width: 16px;
-    height: 16px;
-    border-radius: 5px;
   }
 }
 

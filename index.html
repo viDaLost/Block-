@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#070a18" />
   <title>Crystal Forge 3D</title>
-  <link rel="stylesheet" href="./style.css?v=20260425-fix2" />
+  <link rel="stylesheet" href="./style.css?v=20260425-topview" />
 </head>
 <body>
   <div id="app" class="app">
@@ -45,7 +45,7 @@
     <section class="pieces-panel" aria-label="Доступные фигуры">
       <div class="panel-title">
         <span>Фигуры</span>
-        <small>тяни вверх на поле</small>
+        <small>вид сверху · тяни на поле</small>
       </div>
       <div id="piecesTray" class="pieces-tray"></div>
     </section>
@@ -62,6 +62,7 @@
           <div><b>1</b><span>Перетащи фигуру на поле</span></div>
           <div><b>2</b><span>Заполняй ряды и столбцы</span></div>
           <div><b>3</b><span>Очищай линии и умножай очки</span></div>
+          <div><b>4</b><span>Сдвигай поле пальцем, если нужен обзор</span></div>
         </div>
         <button id="playBtn" class="primary-btn">Играть</button>
         <button id="startSettingsBtn" class="secondary-btn">Настройки</button>
@@ -137,6 +138,6 @@
       }
     }
   </script>
-  <script type="module" src="./main.js?v=20260425-fix2"></script>
+  <script type="module" src="./main.js?v=20260425-topview"></script>
 </body>
 </html>
