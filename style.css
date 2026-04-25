@@ -78,11 +78,11 @@ button {
   top: 0;
   left: 0;
   right: 0;
-  padding: calc(10px + var(--safe-top)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+  padding: calc(7px + var(--safe-top)) max(10px, env(safe-area-inset-right, 0px)) 6px max(10px, env(safe-area-inset-left, 0px));
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   pointer-events: none;
 }
 
@@ -213,7 +213,7 @@ button {
   left: 10px;
   right: 10px;
   bottom: 0;
-  padding: 11px 12px calc(11px + var(--safe-bottom));
+  padding: 9px 11px calc(9px + var(--safe-bottom));
   border: 1px solid var(--line);
   border-bottom: 0;
   border-radius: 28px 28px 0 0;
@@ -229,7 +229,7 @@ button {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 0 3px 10px;
+  padding: 0 3px 8px;
   color: var(--text);
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -244,12 +244,12 @@ button {
 .pieces-tray {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .piece-card {
   position: relative;
-  min-height: 106px;
+  min-height: 94px;
   border-radius: 24px;
   border: 1px solid var(--line);
   background:
@@ -436,7 +436,7 @@ button {
 .tutorial div {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -478,7 +478,7 @@ button {
 .result-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
   margin: 18px 0 8px;
 }
 
@@ -598,19 +598,24 @@ button {
 
 @media (max-width: 430px) {
   .top-ui {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "brand actions"
-      "score score";
+    grid-template-columns: minmax(112px, 1fr) auto auto;
+    align-items: center;
+    gap: 6px;
   }
 
-  .brand { grid-area: brand; }
-  .score-row { grid-area: score; justify-content: center; }
-  .top-actions { grid-area: actions; }
+  .brand { gap: 7px; }
+  .brand h1 { max-width: 135px; overflow: hidden; text-overflow: ellipsis; }
+  .brand p { font-size: 9px; letter-spacing: 0.10em; }
+  .score-row { justify-content: flex-end; gap: 5px; }
+  .score-card { min-width: 60px; padding: 7px 8px; border-radius: 15px; }
+  .score-card strong { font-size: 17px; }
+  .combo-badge { min-width: 44px; padding: 8px 9px; }
+  .top-actions { gap: 5px; }
+  .icon-btn { width: 39px; height: 39px; border-radius: 14px; }
 
   .piece-card {
-    min-height: 96px;
-    border-radius: 22px;
+    min-height: 88px;
+    border-radius: 21px;
   }
 
   .pieces-panel {
@@ -627,7 +632,7 @@ button {
 }
 
 @media (max-height: 720px) {
-  .piece-card { min-height: 82px; }
+  .piece-card { min-height: 78px; }
   .panel-title { padding-bottom: 7px; }
   .score-card { padding: 7px 9px; }
   .brand p { display: none; }

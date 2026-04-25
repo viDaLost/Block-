@@ -10,7 +10,7 @@ const GRID_SIZE = 8; // Здесь можно заменить на 10, чтоб
 const CELL_SIZE = 1;
 const CELL_GAP = 0.075;
 const CELL_STEP = CELL_SIZE + CELL_GAP;
-const BLOCK_HEIGHT = 0.78;
+const BLOCK_HEIGHT = 0.86;
 const MAX_PIXEL_RATIO = 2;
 const STORAGE_KEYS = {
   best: 'crystalForge3d.bestScore',
@@ -97,8 +97,8 @@ let clock = new THREE.Clock();
 const animations = [];
 const particles = [];
 // Камера почти сверху: поле читается как настоящая мобильная puzzle-доска.
-const baseCameraOffset = new THREE.Vector3(0, 10.4, 1.55);
-const cameraTarget = new THREE.Vector3(0, 0, -0.15);
+const baseCameraOffset = new THREE.Vector3(0, 9.25, 2.25);
+const cameraTarget = new THREE.Vector3(0, 0, -0.08);
 const desiredCameraPosition = new THREE.Vector3();
 let boardPanGesture = null;
 let cameraShake = { time: 0, duration: 0, strength: 0 };
@@ -152,7 +152,17 @@ const PIECE_LIBRARY = [
   { name: 'Step R', weight: 5, cells: [[0, 1], [1, 0], [1, 1], [2, 0]] },
   { name: 'Hook', weight: 6, cells: [[0, 0], [0, 1], [1, 0], [2, 0]] },
   { name: 'Hook R', weight: 6, cells: [[0, 0], [0, 1], [1, 1], [2, 1]] },
-  { name: 'Mini Plus', weight: 2, cells: [[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]] }
+  { name: 'Mini Plus', weight: 2, cells: [[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]] },
+  { name: 'Short L Flip', weight: 7, cells: [[0, 0], [0, 1], [1, 1]] },
+  { name: 'Corner Tiny', weight: 7, cells: [[0, 0], [1, 0], [0, 1]] },
+  { name: 'Tiny Step', weight: 6, cells: [[0, 0], [0, 1], [1, 1]] },
+  { name: 'Wide Hook', weight: 4, cells: [[0, 0], [0, 1], [0, 2], [1, 2]] },
+  { name: 'Wide Hook R', weight: 4, cells: [[0, 0], [0, 1], [0, 2], [1, 0]] },
+  { name: 'U Small', weight: 3, cells: [[0, 0], [0, 2], [1, 0], [1, 1], [1, 2]] },
+  { name: 'V Five', weight: 3, cells: [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]] },
+  { name: 'Snake 5', weight: 3, cells: [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2]] },
+  { name: 'Cross Corner', weight: 3, cells: [[0, 1], [1, 0], [1, 1], [2, 1]] },
+  { name: 'Bar Plus', weight: 3, cells: [[0, 0], [0, 1], [0, 2], [1, 1], [2, 1]] }
 ].map((piece, index) => ({
   ...piece,
   id: `piece-${index}`,
@@ -223,8 +233,8 @@ function initThree() {
 }
 
 function createGeometries() {
-  cellTileGeometry = new RoundedBoxGeometry(CELL_SIZE * 0.92, 0.11, CELL_SIZE * 0.92, 4, 0.10);
-  blockGeometry = new RoundedBoxGeometry(CELL_SIZE * 0.82, BLOCK_HEIGHT, CELL_SIZE * 0.82, 5, 0.13);
+  cellTileGeometry = new RoundedBoxGeometry(CELL_SIZE * 0.88, 0.16, CELL_SIZE * 0.88, 5, 0.12);
+  blockGeometry = new RoundedBoxGeometry(CELL_SIZE * 0.80, BLOCK_HEIGHT, CELL_SIZE * 0.80, 6, 0.15);
   ghostBlockGeometry = new RoundedBoxGeometry(CELL_SIZE * 0.84, BLOCK_HEIGHT * 0.55, CELL_SIZE * 0.84, 4, 0.12);
   particleGeometry = new THREE.BoxGeometry(0.085, 0.085, 0.085);
 }
@@ -268,9 +278,9 @@ function createBoard() {
   });
 
   const boardWidth = (GRID_SIZE - 1) * CELL_STEP + CELL_SIZE;
-  const baseGeometry = new RoundedBoxGeometry(boardWidth + 0.72, 0.34, boardWidth + 0.72, 5, 0.22);
+  const baseGeometry = new RoundedBoxGeometry(boardWidth + 0.94, 0.62, boardWidth + 0.94, 6, 0.24);
   boardBase = new THREE.Mesh(baseGeometry, boardBaseMaterial);
-  boardBase.position.y = -0.23;
+  boardBase.position.y = -0.38;
   boardBase.receiveShadow = true;
   boardBase.castShadow = true;
   boardGroup.add(boardBase);
@@ -283,9 +293,9 @@ function createBoard() {
     emissive: theme.accent,
     emissiveIntensity: 0.09
   });
-  const rimThickness = 0.17;
-  const rimHeight = 0.42;
-  const outer = boardWidth + 0.92;
+  const rimThickness = 0.24;
+  const rimHeight = 0.72;
+  const outer = boardWidth + 1.10;
   const rimPieces = [
     { x: 0, z: -outer / 2 + rimThickness / 2, w: outer, d: rimThickness },
     { x: 0, z: outer / 2 - rimThickness / 2, w: outer, d: rimThickness },
@@ -301,9 +311,23 @@ function createBoard() {
     boardGroup.add(rim);
   });
 
+  const bevelGlowMaterial = new THREE.MeshStandardMaterial({
+    color: theme.tileLine,
+    metalness: 0.25,
+    roughness: 0.34,
+    emissive: theme.accent,
+    emissiveIntensity: 0.16,
+    transparent: true,
+    opacity: 0.22
+  });
+  const innerGlow = new THREE.Mesh(new RoundedBoxGeometry(boardWidth + 0.34, 0.055, boardWidth + 0.34, 5, 0.16), bevelGlowMaterial);
+  innerGlow.position.y = 0.005;
+  innerGlow.receiveShadow = true;
+  boardGroup.add(innerGlow);
+
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
-      const position = cellToWorld(row, col, -0.025);
+      const position = cellToWorld(row, col, 0.035);
       boardPositions[row][col] = position;
 
       const tile = new THREE.Mesh(cellTileGeometry, tileMaterial);
@@ -360,10 +384,10 @@ function resize() {
   // В портретной ориентации ширина экрана ограничивает поле сильнее всего.
   // Поэтому считаем ортографическую камеру от ширины, чтобы игрок всегда видел все 8×8 клеток.
   if (aspect < 1) {
-    viewWidth = boardWorldSpan * 1.12;
+    viewWidth = boardWorldSpan * 1.015;
     viewHeight = viewWidth / aspect;
   } else {
-    viewHeight = boardWorldSpan * 1.16;
+    viewHeight = boardWorldSpan * 1.04;
     viewWidth = viewHeight * aspect;
   }
 
@@ -408,11 +432,12 @@ function wireUI() {
     state.themeName = themeSelect.value;
     applyTheme(state.themeName);
     saveSettings();
-    renderPieces();
+    renderPieces(-1);
   });
 
-  renderer.domElement.addEventListener('pointerdown', onBoardPointerDown, { passive: false });
-  renderer.domElement.addEventListener('dblclick', resetBoardPan, { passive: true });
+  // Поле зафиксировано: игрок всегда видит всю доску, случайные сдвиги исключены.
+  // renderer.domElement.addEventListener('pointerdown', onBoardPointerDown, { passive: false });
+  // renderer.domElement.addEventListener('dblclick', resetBoardPan, { passive: true });
 
   window.addEventListener('pointermove', onPointerMove, { passive: false });
   window.addEventListener('pointerup', onPointerUp, { passive: false });
@@ -473,15 +498,16 @@ function closeSettings() {
 }
 
 // -------------------- Рендер нижних фигур --------------------
-function renderPieces() {
+function renderPieces(replacedIndex = null) {
   piecesTray.innerHTML = '';
   const theme = THEMES[state.themeName];
 
   state.pieces.forEach((piece, index) => {
     const card = document.createElement('button');
-    card.className = 'piece-card spawn-in';
+    card.className = 'piece-card';
+    if (replacedIndex === null || replacedIndex === index) card.classList.add('spawn-in');
     card.type = 'button';
-    card.style.animationDelay = `${index * 70}ms`;
+    card.style.animationDelay = replacedIndex === null ? `${index * 70}ms` : '0ms';
     card.dataset.index = String(index);
     if (piece.placed) card.classList.add('used');
     if (!piece.placed && !canPieceFitAnywhere(piece)) {
@@ -535,6 +561,7 @@ function onPiecePointerDown(event, index) {
   if (!piece || piece.placed) return;
 
   ensureAudio();
+  playSound('select');
   const theme = THEMES[state.themeName];
   const card = event.currentTarget;
   card.classList.add('used');
@@ -785,7 +812,7 @@ async function placePiece(piece, pieceIndex, startRow, startCol) {
   state.pieces[pieceIndex] = generateReplacementPiece();
 
   updateScoreUI();
-  renderPieces();
+  renderPieces(pieceIndex);
   state.locked = false;
 
   if (!anyMoveAvailable()) {
@@ -1174,33 +1201,59 @@ function playSound(type) {
 
   const now = audioContext.currentTime;
   const master = audioContext.createGain();
-  master.gain.value = 0.0001;
-  master.connect(audioContext.destination);
+  master.gain.setValueAtTime(0.0001, now);
+  master.gain.exponentialRampToValueAtTime(0.055, now + 0.018);
+  master.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
+
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(type === 'error' ? 900 : 4200, now);
+  filter.Q.setValueAtTime(0.6, now);
+  filter.connect(master).connect(audioContext.destination);
 
   const presets = {
-    place: [{ f: 360, t: 0 }, { f: 560, t: 0.055 }],
-    error: [{ f: 170, t: 0 }, { f: 120, t: 0.07 }],
-    clear: [{ f: 520, t: 0 }, { f: 760, t: 0.06 }, { f: 980, t: 0.12 }],
-    combo: [{ f: 420, t: 0 }, { f: 660, t: 0.05 }, { f: 940, t: 0.10 }, { f: 1220, t: 0.16 }],
-    gameover: [{ f: 260, t: 0 }, { f: 190, t: 0.12 }, { f: 130, t: 0.24 }]
+    select:  { wave: 'sine',     notes: [[720, 0, 0.075], [1040, 0.035, 0.07]], volume: 0.20 },
+    place:   { wave: 'triangle', notes: [[330, 0, 0.12], [495, 0.045, 0.13], [660, 0.09, 0.10]], volume: 0.23 },
+    error:   { wave: 'triangle', notes: [[190, 0, 0.16], [130, 0.07, 0.18]], volume: 0.18 },
+    clear:   { wave: 'sine',     notes: [[520, 0, 0.09], [700, 0.045, 0.10], [940, 0.095, 0.14], [1240, 0.16, 0.13]], volume: 0.25 },
+    combo:   { wave: 'sine',     notes: [[430, 0, 0.09], [650, 0.045, 0.10], [870, 0.09, 0.11], [1160, 0.145, 0.14], [1480, 0.21, 0.16]], volume: 0.29 },
+    gameover:{ wave: 'sine',     notes: [[320, 0, 0.18], [240, 0.13, 0.20], [170, 0.27, 0.24]], volume: 0.20 }
   };
 
-  const notes = presets[type] || presets.place;
-  master.gain.exponentialRampToValueAtTime(0.085, now + 0.012);
-  master.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-
-  notes.forEach((note) => {
+  const preset = presets[type] || presets.place;
+  preset.notes.forEach(([freq, offset, length], i) => {
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
-    osc.type = type === 'error' || type === 'gameover' ? 'triangle' : 'sine';
-    osc.frequency.setValueAtTime(note.f, now + note.t);
-    gain.gain.setValueAtTime(0.0001, now + note.t);
-    gain.gain.exponentialRampToValueAtTime(0.36, now + note.t + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + note.t + 0.18);
-    osc.connect(gain).connect(master);
-    osc.start(now + note.t);
-    osc.stop(now + note.t + 0.2);
+    osc.type = preset.wave;
+    osc.frequency.setValueAtTime(freq, now + offset);
+    if (type === 'place' || type === 'clear' || type === 'combo') {
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.018, now + offset + length);
+    }
+    gain.gain.setValueAtTime(0.0001, now + offset);
+    gain.gain.exponentialRampToValueAtTime(preset.volume / (i === 0 ? 1 : 1.18), now + offset + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + length);
+    osc.connect(gain).connect(filter);
+    osc.start(now + offset);
+    osc.stop(now + offset + length + 0.03);
   });
+
+  if (type === 'place' || type === 'clear' || type === 'combo') {
+    playSoftNoise(now, type === 'combo' ? 0.13 : 0.08, type === 'place' ? 0.022 : 0.04, filter);
+  }
+}
+
+function playSoftNoise(startTime, amount, length, destination) {
+  const sampleRate = audioContext.sampleRate;
+  const buffer = audioContext.createBuffer(1, Math.max(1, Math.floor(sampleRate * length)), sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  const source = audioContext.createBufferSource();
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(amount, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + length);
+  source.connect(gain).connect(destination);
+  source.start(startTime);
+  source.stop(startTime + length + 0.01);
 }
 
 function vibrate(pattern) {
