@@ -23,35 +23,35 @@ const THEMES = {
     bgA: '#050716', bgB: '#101a34', scene: '#060a16',
     accent: '#35e7ff', accent2: '#9d6bff', good: '#66ffc6', bad: '#ff536f',
     board: '#131d37', tile: '#202d4c', tileLine: '#3b4e7c',
-    blocks: ['#35e7ff', '#9d6bff', '#ff4fb8', '#7dffb2', '#ffce4a', '#ff7a59', '#59a7ff', '#f7ff6a', '#c56bff', '#4dffd8']
+    blocks: ['#35e7ff', '#9d6bff', '#ff4fb8', '#7dffb2', '#ffce4a', '#ff7a59', '#59a7ff', '#f7ff6a', '#c56bff', '#4dffd8', '#ffffff', '#ff9cf0', '#7fffe8', '#ffaa3d']
   },
   crystal: {
     name: 'Crystal',
     bgA: '#061321', bgB: '#153b58', scene: '#071421',
     accent: '#8cf7ff', accent2: '#d7f8ff', good: '#b8fff0', bad: '#ff6684',
     board: '#183349', tile: '#24516a', tileLine: '#6fcce8',
-    blocks: ['#8cf7ff', '#b4fff2', '#d7f8ff', '#79b9ff', '#caa8ff', '#ffb7ef', '#9fffcb', '#fff59a', '#9fb7ff', '#ffffff']
+    blocks: ['#8cf7ff', '#b4fff2', '#d7f8ff', '#79b9ff', '#caa8ff', '#ffb7ef', '#9fffcb', '#fff59a', '#9fb7ff', '#ffffff', '#66f0ff', '#e0c6ff', '#a4ffb6', '#ffd1fa']
   },
   lava: {
     name: 'Lava',
     bgA: '#120606', bgB: '#35100f', scene: '#140808',
     accent: '#ff8a2a', accent2: '#ff335c', good: '#ffd166', bad: '#ff335c',
     board: '#2a1514', tile: '#4a201d', tileLine: '#ff8a2a',
-    blocks: ['#ff8a2a', '#ff335c', '#ffd166', '#ff5e1a', '#ffb84d', '#ff2a8a', '#ffef5a', '#d94a2b', '#ff6f3c', '#ffa600']
+    blocks: ['#ff8a2a', '#ff335c', '#ffd166', '#ff5e1a', '#ffb84d', '#ff2a8a', '#ffef5a', '#d94a2b', '#ff6f3c', '#ffa600', '#ffcf8a', '#ff477e', '#ff9f1c', '#ffe66d']
   },
   ice: {
     name: 'Ice',
     bgA: '#031019', bgB: '#12314a', scene: '#071924',
     accent: '#71d7ff', accent2: '#b6e8ff', good: '#b8fff0', bad: '#ff6d8d',
     board: '#123044', tile: '#1d4962', tileLine: '#89dfff',
-    blocks: ['#71d7ff', '#b6e8ff', '#86ffc8', '#e3f7ff', '#7aa6ff', '#c7f6ff', '#a0ffef', '#d8ddff', '#ffffff', '#6ed4ff']
+    blocks: ['#71d7ff', '#b6e8ff', '#86ffc8', '#e3f7ff', '#7aa6ff', '#c7f6ff', '#a0ffef', '#d8ddff', '#ffffff', '#6ed4ff', '#b4d8ff', '#eafcff', '#a9fff5', '#91b7ff']
   },
   space: {
     name: 'Space',
     bgA: '#05040d', bgB: '#171033', scene: '#060411',
     accent: '#b36bff', accent2: '#ff5fd2', good: '#65ffd8', bad: '#ff4d6d',
     board: '#151128', tile: '#251b43', tileLine: '#7d55ff',
-    blocks: ['#b36bff', '#ff5fd2', '#5ddcff', '#fff07a', '#8cffd1', '#ff8a5d', '#6b7cff', '#f76bff', '#72ff6b', '#ffffff']
+    blocks: ['#b36bff', '#ff5fd2', '#5ddcff', '#fff07a', '#8cffd1', '#ff8a5d', '#6b7cff', '#f76bff', '#72ff6b', '#ffffff', '#ffb000', '#00ffd5', '#ff6ea8', '#8aa2ff']
   }
 };
 
@@ -97,7 +97,7 @@ let clock = new THREE.Clock();
 const animations = [];
 const particles = [];
 // Камера почти сверху: поле читается как настоящая мобильная puzzle-доска.
-const baseCameraOffset = new THREE.Vector3(0, 10.8, 2.35);
+const baseCameraOffset = new THREE.Vector3(0, 10.4, 1.55);
 const cameraTarget = new THREE.Vector3(0, 0, -0.15);
 const desiredCameraPosition = new THREE.Vector3();
 let boardPanGesture = null;
@@ -196,10 +196,10 @@ function initThree() {
   particleGroup = new THREE.Group();
   scene.add(boardGroup, tileGroup, blockGroup, ghostGroup, particleGroup);
 
-  ambientLight = new THREE.AmbientLight(0xffffff, 0.62);
-  hemiLight = new THREE.HemisphereLight(0xaadfff, 0x100820, 1.4);
-  keyLight = new THREE.DirectionalLight(0xffffff, 2.25);
-  keyLight.position.set(4, 8, 5);
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
+  hemiLight = new THREE.HemisphereLight(0xaadfff, 0x100820, 1.65);
+  keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
+  keyLight.position.set(1.8, 9.5, 1.4);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024, 1024);
   keyLight.shadow.camera.near = 0.5;
@@ -238,7 +238,7 @@ function createBoard() {
     metalness: 0.35,
     roughness: 0.55,
     emissive: theme.accent,
-    emissiveIntensity: 0.035
+    emissiveIntensity: 0.06
   });
 
   tileMaterial = new THREE.MeshStandardMaterial({
@@ -246,7 +246,7 @@ function createBoard() {
     metalness: 0.28,
     roughness: 0.48,
     emissive: theme.tileLine,
-    emissiveIntensity: 0.035
+    emissiveIntensity: 0.065
   });
 
   ghostGoodMaterial = new THREE.MeshStandardMaterial({
@@ -270,13 +270,40 @@ function createBoard() {
   const boardWidth = (GRID_SIZE - 1) * CELL_STEP + CELL_SIZE;
   const baseGeometry = new RoundedBoxGeometry(boardWidth + 0.72, 0.34, boardWidth + 0.72, 5, 0.22);
   boardBase = new THREE.Mesh(baseGeometry, boardBaseMaterial);
-  boardBase.position.y = -0.16;
+  boardBase.position.y = -0.23;
   boardBase.receiveShadow = true;
+  boardBase.castShadow = true;
   boardGroup.add(boardBase);
+
+  // Невысокая 3D-рама делает поле заметно объёмным даже при виде почти сверху.
+  const rimMaterial = new THREE.MeshStandardMaterial({
+    color: theme.board,
+    metalness: 0.38,
+    roughness: 0.42,
+    emissive: theme.accent,
+    emissiveIntensity: 0.09
+  });
+  const rimThickness = 0.17;
+  const rimHeight = 0.42;
+  const outer = boardWidth + 0.92;
+  const rimPieces = [
+    { x: 0, z: -outer / 2 + rimThickness / 2, w: outer, d: rimThickness },
+    { x: 0, z: outer / 2 - rimThickness / 2, w: outer, d: rimThickness },
+    { x: -outer / 2 + rimThickness / 2, z: 0, w: rimThickness, d: outer },
+    { x: outer / 2 - rimThickness / 2, z: 0, w: rimThickness, d: outer }
+  ];
+  rimPieces.forEach((part) => {
+    const rim = new THREE.Mesh(new RoundedBoxGeometry(part.w, rimHeight, part.d, 4, 0.11), rimMaterial);
+    rim.position.set(part.x, 0.02, part.z);
+    rim.castShadow = true;
+    rim.receiveShadow = true;
+    rim.userData.isRim = true;
+    boardGroup.add(rim);
+  });
 
   for (let row = 0; row < GRID_SIZE; row++) {
     for (let col = 0; col < GRID_SIZE; col++) {
-      const position = cellToWorld(row, col, 0);
+      const position = cellToWorld(row, col, -0.025);
       boardPositions[row][col] = position;
 
       const tile = new THREE.Mesh(cellTileGeometry, tileMaterial);
@@ -666,7 +693,7 @@ function showGhostPreview(piece, startRow, startCol, valid) {
     const col = startCol + dc;
     if (!isInside(row, col)) continue;
 
-    const pos = cellToWorld(row, col, BLOCK_HEIGHT * 0.35 + 0.08);
+    const pos = cellToWorld(row, col, 0.56);
     const cube = new THREE.Mesh(ghostBlockGeometry, material);
     cube.position.copy(pos);
     cube.castShadow = false;
@@ -679,6 +706,7 @@ function clearGhostPreview() {
   while (ghostGroup.children.length) {
     const child = ghostGroup.children.pop();
     ghostGroup.remove(child);
+    child.geometry?.dispose?.();
   }
 }
 
@@ -753,9 +781,8 @@ async function placePiece(piece, pieceIndex, startRow, startCol) {
     state.multiplier = 1;
   }
 
-  if (state.pieces.every((p) => p.placed)) {
-    state.pieces = generatePieceSet();
-  }
+  // В этой версии слот обновляется сразу: поставил фигуру — на её месте появляется следующая.
+  state.pieces[pieceIndex] = generateReplacementPiece();
 
   updateScoreUI();
   renderPieces();
@@ -781,7 +808,7 @@ function createBlockMesh(color, colorIndex = 0) {
   });
   const mesh = new THREE.Mesh(blockGeometry, material);
   mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.receiveShadow = false;
   mesh.userData.colorIndex = colorIndex;
   return mesh;
 }
@@ -907,6 +934,24 @@ function canPieceFitAnywhere(piece) {
 
 function anyMoveAvailable() {
   return state.pieces.some((piece) => !piece.placed && canPieceFitAnywhere(piece));
+}
+
+function generateReplacementPiece() {
+  // Стараемся дать игроку фигуру, которую реально можно поставить сейчас.
+  for (let attempt = 0; attempt < 90; attempt++) {
+    const candidate = clonePiece(weightedRandomPiece());
+    if (candidate.cells.length >= 5 && Math.random() < 0.55) continue;
+    if (canPieceFitAnywhere(candidate)) return candidate;
+  }
+
+  const simpleNames = ['Single', 'Duo H', 'Duo V', 'L Small', 'L Small R', 'Tri H', 'Tri V'];
+  for (const name of simpleNames) {
+    const piece = clonePiece(PIECE_LIBRARY.find((item) => item.name === name));
+    if (piece && canPieceFitAnywhere(piece)) return piece;
+  }
+
+  // Если даже одиночный кубик не помещается, вернём одиночный слот и сразу после рендера сработает game over.
+  return clonePiece(PIECE_LIBRARY[0]);
 }
 
 function generatePieceSet() {
@@ -1071,6 +1116,12 @@ function applyTheme(themeName) {
 
   boardBaseMaterial?.color.set(theme.board);
   boardBaseMaterial?.emissive.set(theme.accent);
+  boardGroup?.children.forEach((child) => {
+    if (child.userData?.isRim && child.material) {
+      child.material.color.set(theme.board);
+      child.material.emissive.set(theme.accent);
+    }
+  });
   tileMaterial?.color.set(theme.tile);
   tileMaterial?.emissive.set(theme.tileLine);
   ghostGoodMaterial?.color.set(theme.good);
