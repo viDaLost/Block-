@@ -4,19 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#070a18" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Crystal Forge 3D</title>
-  <link rel="stylesheet" href="./style.css?v=20260425-final4d" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="./style.css?v=20260501-premium" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div id="app" class="app">
+  <div id="app" class="app" data-theme="crystal">
     <div id="sceneWrap" class="scene-wrap"></div>
+    <div class="scene-vignette" aria-hidden="true"></div>
 
     <header class="top-ui">
       <div class="brand">
-        <div class="brand-mark"></div>
+        <div class="brand-mark" aria-hidden="true"></div>
         <div>
-          <h1>Crystal Forge 3D</h1>
+          <h1>Crystal Forge</h1>
           <p>3D block puzzle</p>
         </div>
       </div>
@@ -56,15 +60,31 @@
 
     <div id="startScreen" class="overlay visible">
       <div class="modal start-modal">
-        <div class="big-logo"></div>
-        <h2>Crystal Forge 3D</h2>
-        <p class="modal-subtitle">Премиальный 3D‑пазл для телефона: ставь блоки и собирай комбо.</p>
-        <div class="tutorial">
-          <div><b>1</b><span>Перетащи фигуру на поле</span></div>
-          <div><b>2</b><span>Заполняй ряды и столбцы</span></div>
-          <div><b>3</b><span>Очищай линии и умножай очки</span></div>
-          <div><b>4</b><span>Сдвигай поле пальцем для обзора</span></div>
+        <div class="start-hero">
+          <div class="elite-badge">Premium puzzle</div>
+          <div class="big-logo" aria-hidden="true">
+            <span></span>
+          </div>
+          <h2>Crystal Forge 3D</h2>
+          <p class="modal-subtitle">Собирай линии, усиливай комбо и держи поле под контролем.</p>
         </div>
+
+        <div class="menu-preview" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="menu-stats">
+          <div><b>8×8</b><span>поле</span></div>
+          <div><b>3D</b><span>блоки</span></div>
+          <div><b>8</b><span>тем</span></div>
+        </div>
+
+        <div class="tutorial">
+          <div><b>1</b><span>Перетащи фигуру на свободные клетки.</span></div>
+          <div><b>2</b><span>Заполни ряд или столбец.</span></div>
+          <div><b>3</b><span>Собирай серии и поднимай счёт.</span></div>
+        </div>
+
         <button id="playBtn" class="primary-btn">Играть</button>
         <button id="startSettingsBtn" class="secondary-btn">Настройки</button>
       </div>
@@ -72,8 +92,9 @@
 
     <div id="pauseScreen" class="overlay">
       <div class="modal compact-modal">
-        <h2>Пауза</h2>
-        <p class="modal-subtitle">Игра сохранена на экране. Продолжай, когда будешь готов.</p>
+        <div class="modal-kicker">Пауза</div>
+        <h2>Игра сохранена</h2>
+        <p class="modal-subtitle">Поле осталось на месте. Продолжай партию с того же хода.</p>
         <button id="resumeBtn" class="primary-btn">Продолжить</button>
         <button id="restartBtn" class="secondary-btn">Начать заново</button>
       </div>
@@ -81,8 +102,9 @@
 
     <div id="gameOverScreen" class="overlay">
       <div class="modal compact-modal">
-        <h2>Игра окончена</h2>
-        <p class="modal-subtitle">Ходов больше нет</p>
+        <div class="modal-kicker">Финал</div>
+        <h2>Ходов больше нет</h2>
+        <p class="modal-subtitle">Освободи часть поля или начни новую попытку.</p>
         <div class="result-grid">
           <div><span>Итог</span><strong id="finalScoreText">0</strong></div>
           <div><span>Рекорд</span><strong id="finalBestText">0</strong></div>
@@ -94,6 +116,7 @@
 
     <div id="settingsScreen" class="overlay">
       <div class="modal settings-modal">
+        <div class="modal-kicker">Параметры</div>
         <h2>Настройки</h2>
 
         <label class="setting-line">
@@ -142,6 +165,6 @@
       }
     }
   </script>
-  <script type="module" src="./main.js?v=20260425-final4d"></script>
+  <script type="module" src="./main.js?v=20260501-premium"></script>
 </body>
 </html>

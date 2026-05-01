@@ -247,7 +247,7 @@ const state = {
   locked: false,
   continueAvailable: true,
   activeDrag: null,
-  themeName: savedSettings.themeName || 'neon',
+  themeName: savedSettings.themeName || 'crystal',
   quality: savedSettings.quality || 'medium',
   sound: savedSettings.sound ?? true,
   vibration: savedSettings.vibration ?? true
@@ -649,8 +649,10 @@ function renderPieces(replacedIndex = null) {
   const theme = THEMES[state.themeName];
 
   state.pieces.forEach((piece, index) => {
+    const color = theme.blocks[piece.colorIndex % theme.blocks.length];
     const card = document.createElement('button');
     card.className = 'piece-card';
+    card.style.setProperty('--piece-color', color);
     if (replacedIndex === null || replacedIndex === index) card.classList.add('spawn-in');
     card.type = 'button';
     card.style.animationDelay = replacedIndex === null ? `${index * 70}ms` : '0ms';
@@ -661,7 +663,7 @@ function renderPieces(replacedIndex = null) {
       card.title = 'Эта фигура сейчас не помещается';
     }
 
-    const mini = createPieceMini(piece, theme.blocks[piece.colorIndex % theme.blocks.length], 'piece-mini');
+    const mini = createPieceMini(piece, color, 'piece-mini');
     card.appendChild(mini);
 
     card.addEventListener('pointerdown', (event) => onPiecePointerDown(event, index), { passive: false });
@@ -1259,12 +1261,24 @@ function applyTheme(themeName) {
   const theme = THEMES[themeName] || THEMES.neon;
   const visuals = getThemeVisuals(themeName);
   const root = document.documentElement;
+  const app = document.getElementById('app');
+  root.dataset.theme = themeName;
+  app?.setAttribute('data-theme', themeName);
   root.style.setProperty('--bg-a', theme.bgA);
   root.style.setProperty('--bg-b', theme.bgB);
+  root.style.setProperty('--scene', theme.scene);
+  root.style.setProperty('--board', theme.board);
+  root.style.setProperty('--tile', theme.tile);
+  root.style.setProperty('--tile-line', theme.tileLine);
   root.style.setProperty('--accent', theme.accent);
   root.style.setProperty('--accent-2', theme.accent2);
   root.style.setProperty('--good', theme.good);
   root.style.setProperty('--bad', theme.bad);
+  root.style.setProperty('--panel', `color-mix(in srgb, ${theme.bgA}, transparent 12%)`);
+  root.style.setProperty('--panel-strong', `color-mix(in srgb, ${theme.bgB}, black 10%)`);
+  root.style.setProperty('--line', `color-mix(in srgb, ${theme.accent}, transparent 80%)`);
+  root.style.setProperty('--muted', `color-mix(in srgb, ${theme.accent2}, white 20%)`);
+  root.style.setProperty('--button-text', themeName === 'ice' || themeName === 'crystal' || themeName === 'royal' ? '#06101a' : '#050711');
 
   if (!scene) return;
   scene.background = new THREE.Color(theme.scene);
