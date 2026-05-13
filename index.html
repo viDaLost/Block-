@@ -1,170 +1,212 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#070a18" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Crystal Forge 3D</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="./style.css?v=20260501-premium" />
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ede4d8" />
+  <title>Артур и Алиса — 26.05.2026</title>
+  <meta name="description" content="Свадебное приглашение Артура и Алисы. Статическая копия с медиа-заглушками." />
+  <link rel="preload" href="styles.css" as="style" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="app" class="app" data-theme="crystal">
-    <div id="sceneWrap" class="scene-wrap"></div>
-    <div class="scene-vignette" aria-hidden="true"></div>
-
-    <header class="top-ui">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true"></div>
-        <div>
-          <h1>Crystal Forge</h1>
-          <p>3D block puzzle</p>
-        </div>
-      </div>
-
-      <div class="score-row" aria-label="Счёт">
-        <div class="score-card">
-          <span>Счёт</span>
-          <strong id="scoreText">0</strong>
-        </div>
-        <div class="score-card">
-          <span>Рекорд</span>
-          <strong id="bestText">0</strong>
-        </div>
-        <div id="comboBadge" class="combo-badge hidden">×1</div>
-      </div>
-
-      <div class="top-actions">
-        <button id="pauseBtn" class="icon-btn" aria-label="Пауза">Ⅱ</button>
-        <button id="settingsBtn" class="icon-btn" aria-label="Настройки">⚙</button>
-      </div>
-    </header>
-
-    <main class="play-layer" aria-label="Игровая область">
-      <div id="hintBubble" class="hint-bubble hidden">Перетащи фигуру на поле</div>
-    </main>
-
-    <section class="pieces-panel" aria-label="Доступные фигуры">
-      <div class="panel-title">
-        <span>Фигуры</span>
-        <small>вид сверху · тяни на поле</small>
-      </div>
-      <div id="piecesTray" class="pieces-tray"></div>
-    </section>
-
-    <div id="dragGhostUi" class="drag-ghost-ui hidden"></div>
-    <div id="toast" class="toast hidden">СУПЕР!</div>
-
-    <div id="startScreen" class="overlay visible">
-      <div class="modal start-modal">
-        <div class="start-hero">
-          <div class="elite-badge">Premium puzzle</div>
-          <div class="big-logo" aria-hidden="true">
-            <span></span>
-          </div>
-          <h2>Crystal Forge 3D</h2>
-          <p class="modal-subtitle">Собирай линии, усиливай комбо и держи поле под контролем.</p>
-        </div>
-
-        <div class="menu-preview" aria-hidden="true">
-          <span></span><span></span><span></span><span></span><span></span><span></span>
-        </div>
-
-        <div class="menu-stats">
-          <div><b>8×8</b><span>поле</span></div>
-          <div><b>3D</b><span>блоки</span></div>
-          <div><b>8</b><span>тем</span></div>
-        </div>
-
-        <div class="tutorial">
-          <div><b>1</b><span>Перетащи фигуру на свободные клетки.</span></div>
-          <div><b>2</b><span>Заполни ряд или столбец.</span></div>
-          <div><b>3</b><span>Собирай серии и поднимай счёт.</span></div>
-        </div>
-
-        <button id="playBtn" class="primary-btn">Играть</button>
-        <button id="startSettingsBtn" class="secondary-btn">Настройки</button>
-      </div>
+  <div class="desktop-gate" aria-hidden="true">
+    <div class="desktop-gate__phone">
+      <span></span><span></span><span></span>
     </div>
-
-    <div id="pauseScreen" class="overlay">
-      <div class="modal compact-modal">
-        <div class="modal-kicker">Пауза</div>
-        <h2>Игра сохранена</h2>
-        <p class="modal-subtitle">Поле осталось на месте. Продолжай партию с того же хода.</p>
-        <button id="resumeBtn" class="primary-btn">Продолжить</button>
-        <button id="restartBtn" class="secondary-btn">Начать заново</button>
-      </div>
-    </div>
-
-    <div id="gameOverScreen" class="overlay">
-      <div class="modal compact-modal">
-        <div class="modal-kicker">Финал</div>
-        <h2>Ходов больше нет</h2>
-        <p class="modal-subtitle">Освободи часть поля или начни новую попытку.</p>
-        <div class="result-grid">
-          <div><span>Итог</span><strong id="finalScoreText">0</strong></div>
-          <div><span>Рекорд</span><strong id="finalBestText">0</strong></div>
-        </div>
-        <button id="continueBtn" class="primary-btn">Продолжить</button>
-        <button id="gameOverRestartBtn" class="secondary-btn">Начать заново</button>
-      </div>
-    </div>
-
-    <div id="settingsScreen" class="overlay">
-      <div class="modal settings-modal">
-        <div class="modal-kicker">Параметры</div>
-        <h2>Настройки</h2>
-
-        <label class="setting-line">
-          <span>Звук</span>
-          <input id="soundToggle" type="checkbox" checked />
-        </label>
-
-        <label class="setting-line">
-          <span>Вибрация</span>
-          <input id="vibrationToggle" type="checkbox" checked />
-        </label>
-
-        <label class="setting-line column">
-          <span>Качество графики</span>
-          <select id="qualitySelect">
-            <option value="low">Низкое</option>
-            <option value="medium" selected>Среднее</option>
-            <option value="high">Высокое</option>
-          </select>
-        </label>
-
-        <label class="setting-line column">
-          <span>Тема</span>
-          <select id="themeSelect">
-            <option value="neon">Neon</option>
-            <option value="crystal">Crystal</option>
-            <option value="lava">Lava</option>
-            <option value="ice">Ice</option>
-            <option value="space">Space</option>
-            <option value="toxic">Toxic</option>
-            <option value="tokyo">Tokyo</option>
-            <option value="royal">Royal</option>
-          </select>
-        </label>
-
-        <button id="closeSettingsBtn" class="primary-btn">Готово</button>
-      </div>
-    </div>
+    <p>Пожалуйста, откройте сайт через мобильное устройство</p>
   </div>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
-  <script type="module" src="./main.js?v=20260501-premium"></script>
+  <div class="preloader" data-preloader>
+    <div class="preloader__mark">A<span>&</span>A</div>
+    <div class="preloader__bar"><i></i></div>
+    <p>Загрузка...</p>
+  </div>
+
+  <main class="site-shell" id="top">
+    <div class="scroll-progress" data-progress></div>
+
+    <section class="hero section" aria-label="Главный экран">
+      <div class="media-placeholder hero__media" role="img" aria-label="Заглушка главного фото">
+        <span class="media-placeholder__label">Фото-заглушка</span>
+      </div>
+      <div class="hero__veil"></div>
+      <div class="hero__content">
+        <p class="kicker reveal">свадебное приглашение</p>
+        <div class="hero__names reveal" style="--delay: .06s">
+          <span>Артур</span>
+          <em>&</em>
+          <span>Алиса</span>
+        </div>
+        <time class="hero__date reveal" datetime="2026-05-26" style="--delay: .12s">26.05.2026</time>
+        <p class="hero__subtitle reveal" style="--delay: .18s">однажды и навсегда</p>
+      </div>
+      <div class="hero__bottom">
+        <a class="scroll-hint" href="#invite" aria-label="Листайте вниз">
+          <span>листайте вниз</span>
+          <i></i>
+        </a>
+        <button class="music-button" type="button" data-music aria-pressed="false">
+          <span class="music-button__icon">♪</span>
+          <span class="music-button__text">включить музыку</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section intro" id="invite">
+      <div class="ornament ornament--left">D</div>
+      <div class="ornament ornament--right">D</div>
+      <p class="section-letter reveal">Д</p>
+      <h1 class="title reveal">Дорогие<br>друзья и родные!</h1>
+      <div class="copy reveal">
+        <p>Мы счастливы пригласить вас на наше торжество бракосочетания, и желаем, чтобы в этот важный для нас день вы были рядом.</p>
+        <p>Каждый из вас — часть нашей истории, часть нашей жизни и нашего сердца. Ваше присутствие сделает наш праздник ярче и красивей.</p>
+      </div>
+    </section>
+
+    <section class="section story" aria-label="История любви">
+      <div class="media-card reveal">
+        <div class="media-placeholder media-placeholder--portrait" role="img" aria-label="Заглушка фото пары">
+          <span class="media-placeholder__label">Фото пары</span>
+        </div>
+      </div>
+      <time class="story__date reveal" datetime="2025-08-17">17 августа 2025 г.</time>
+      <div class="copy copy--center reveal">
+        <p>Сегодня мы делимся с вами самым дорогим — историей нашей любви!</p>
+        <p>Пусть частичка этого тепла согреет каждое сердце!</p>
+        <p>Ваш приезд станет для нас настоящим украшением праздника.</p>
+      </div>
+    </section>
+
+    <section class="section date-section" aria-label="Дата бракосочетания">
+      <p class="section-letter reveal">Д</p>
+      <h2 class="title reveal">Дата<br>бракосочетания</h2>
+      <div class="calendar reveal" aria-label="Календарь на май 2026 года">
+        <div class="calendar__head">
+          <span>Май</span>
+          <strong>2026</strong>
+        </div>
+        <div class="calendar__weekdays" aria-hidden="true">
+          <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
+        </div>
+        <div class="calendar__days" data-calendar></div>
+      </div>
+    </section>
+
+    <section class="section location" aria-label="Локация">
+      <p class="section-letter reveal">Л</p>
+      <h2 class="title reveal">Локация</h2>
+      <div class="location-card reveal">
+        <div class="media-placeholder media-placeholder--map" role="img" aria-label="Заглушка карты">
+          <span class="media-placeholder__label">Карта / фото локации</span>
+        </div>
+        <div class="location-card__body">
+          <h3>Вилла Ротонда Довиль</h3>
+          <p>Просьба учитывать расстояние и загруженность Московских дорог и прибыть на место проведения мероприятия вовремя.</p>
+          <a class="button" href="https://yandex.ru/maps/?text=%D0%92%D0%B8%D0%BB%D0%BB%D0%B0%20%D0%A0%D0%BE%D1%82%D0%BE%D0%BD%D0%B4%D0%B0%20%D0%94%D0%BE%D0%B2%D0%B8%D0%BB%D1%8C" target="_blank" rel="noopener">Посмотреть на карте</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section program" aria-label="Программа дня">
+      <p class="section-letter reveal">П</p>
+      <h2 class="title reveal">Программа дня</h2>
+      <time class="program__date reveal" datetime="2026-05-26">26.05.2026</time>
+      <ol class="timeline">
+        <li class="timeline__item reveal">
+          <time>10:45</time>
+          <div><h3>Сбор гостей</h3></div>
+        </li>
+        <li class="timeline__item reveal">
+          <time>11:00</time>
+          <div><h3>Начало официальной части</h3></div>
+        </li>
+        <li class="timeline__item reveal">
+          <time>15:00</time>
+          <div><h3>Фотосессия с гостями</h3><p>Никто не останется без ярких кадров с нами на память.</p></div>
+        </li>
+        <li class="timeline__item reveal">
+          <time>23:00</time>
+          <div><h3>Столы и праздничная программа</h3></div>
+        </li>
+        <li class="timeline__item timeline__item--end reveal">
+          <time>финал</time>
+          <div><h3>Завершение мероприятия</h3></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section dress" aria-label="Дресс-код">
+      <p class="section-letter reveal">D</p>
+      <h2 class="title reveal">Дресс-код</h2>
+      <div class="copy copy--center reveal">
+        <p>Мы будем очень рады если Вы поддержите цветовую гамму нашей свадьбы:</p>
+      </div>
+      <div class="palette reveal" aria-label="Цветовая гамма свадьбы">
+        <span style="--swatch:#f1ece4"></span>
+        <span style="--swatch:#d6c7b8"></span>
+        <span style="--swatch:#b7a08f"></span>
+        <span style="--swatch:#8c7665"></span>
+        <span style="--swatch:#2b2927"></span>
+      </div>
+      <div class="media-row reveal">
+        <div class="media-placeholder media-placeholder--small"><span class="media-placeholder__label">Фото</span></div>
+        <div class="media-placeholder media-placeholder--small"><span class="media-placeholder__label">Видео</span></div>
+      </div>
+    </section>
+
+    <section class="section second-day" aria-label="Второй день">
+      <p class="section-letter reveal">В</p>
+      <h2 class="title reveal">Второй день</h2>
+      <div class="copy reveal">
+        <p>Мы будем рады видеть вас и 27 мая 2026 года на втором дне нашей свадьбы.</p>
+        <p>Второй день свадебного торжества начнется по этому же адресу в 13:00.</p>
+        <p>Сбор гостей до 12:45.</p>
+      </div>
+    </section>
+
+    <section class="section note" aria-label="Важная информация">
+      <div class="note-card reveal">
+        <p>Обратите внимание, мероприятие проходит на территории с водоёмом, во избежание опасных ситуаций, убедительно просим следить за детьми, особенно у воды и лестниц.</p>
+      </div>
+    </section>
+
+    <section class="section rsvp" aria-label="Анкета гостя">
+      <p class="section-letter reveal">А</p>
+      <h2 class="title reveal">Анкета гостя</h2>
+      <div class="copy copy--center reveal">
+        <p>Мы будем счастливы видеть вас! Пожалуйста, отметьте:</p>
+      </div>
+      <form class="rsvp-form reveal" data-rsvp novalidate>
+        <label>
+          <span>Ваше имя и фамилия</span>
+          <input name="name" type="text" autocomplete="name" required placeholder="Например, Иван Петров" />
+        </label>
+        <label>
+          <span>Количество человек</span>
+          <input name="count" type="number" min="1" max="20" required placeholder="1" />
+        </label>
+        <fieldset>
+          <legend>Сможете ли Вы присутствовать на торжестве?</legend>
+          <label class="radio"><input type="radio" name="attendance" value="Да, мы будем!" required /> <span>Да, мы будем!</span></label>
+          <label class="radio"><input type="radio" name="attendance" value="К сожалению, не сможем присутствовать." /> <span>К сожалению, не сможем присутствовать.</span></label>
+        </fieldset>
+        <label>
+          <span>Комментарий</span>
+          <textarea name="comment" rows="4" placeholder="Аллергии, пожелания или важные детали"></textarea>
+        </label>
+        <button class="button button--full" type="submit">Отправить ответ</button>
+        <p class="rsvp-form__status" data-rsvp-status role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <footer class="footer section">
+      <p class="section-letter reveal">Д</p>
+      <h2 class="title reveal">До встречи!</h2>
+      <p class="footer__names reveal">Артур <span>&</span> Алиса</p>
+    </footer>
+  </main>
+
+  <script src="script.js" defer></script>
 </body>
 </html>
